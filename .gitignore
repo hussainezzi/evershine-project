@@ -1,0 +1,7 @@
+# clasp credentials — live Google OAuth tokens, never commit
+.clasprc.json
+apps-script/.clasp.json
+
+node_modules/
+.DS_Store
+*.log

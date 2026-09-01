@@ -1,0 +1,1106 @@
+<title>Drive-Native School OS</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;450;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --paper:#F3F5F0;
+    --surface:#FFFFFF;
+    --surface-2:#EAEEE7;
+    --ink:#161F1A;
+    --ink-2:#39473F;
+    --muted:#66756C;
+    --rule:#D4DBD1;
+    --rule-strong:#B4BFB0;
+    --accent:#2C6A4C;
+    --accent-2:#E3EDE5;
+    --caution:#8A5A0B;
+    --caution-bg:#F6EEDD;
+    --risk:#9B3A2A;
+    --risk-bg:#F7E7E3;
+    --code-bg:#EAEEE7;
+    --shadow:0 1px 2px rgba(22,31,26,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#111614;
+      --surface:#181F1B;
+      --surface-2:#1F2823;
+      --ink:#E3E9E3;
+      --ink-2:#BDC8C0;
+      --muted:#8B9A90;
+      --rule:#2C3831;
+      --rule-strong:#405046;
+      --accent:#6CBE93;
+      --accent-2:#1D2C24;
+      --caution:#D8A75A;
+      --caution-bg:#2A2417;
+      --risk:#E08C79;
+      --risk-bg:#2C1D19;
+      --code-bg:#1F2823;
+      --shadow:0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#111614;
+    --surface:#181F1B;
+    --surface-2:#1F2823;
+    --ink:#E3E9E3;
+    --ink-2:#BDC8C0;
+    --muted:#8B9A90;
+    --rule:#2C3831;
+    --rule-strong:#405046;
+    --accent:#6CBE93;
+    --accent-2:#1D2C24;
+    --caution:#D8A75A;
+    --caution-bg:#2A2417;
+    --risk:#E08C79;
+    --risk-bg:#2C1D19;
+    --code-bg:#1F2823;
+    --shadow:0 1px 2px rgba(0,0,0,.4);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:16px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  .shell{max-width:1200px;margin:0 auto;padding:0 24px 96px}
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    border-bottom:2px solid var(--ink);
+    padding:56px 0 24px;
+    margin-bottom:40px;
+  }
+  .kicker{
+    font-family:"IBM Plex Mono",ui-monospace,monospace;
+    font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:18px;
+  }
+  h1{
+    font-family:"Zilla Slab",Georgia,serif;
+    font-weight:700;font-size:clamp(2.3rem,5.2vw,3.5rem);
+    line-height:1.03;letter-spacing:-.015em;margin:0 0 18px;
+    text-wrap:balance;
+  }
+  .standfirst{
+    font-size:1.12rem;color:var(--ink-2);max-width:64ch;margin:0 0 28px;
+  }
+  .meta{
+    display:flex;flex-wrap:wrap;gap:8px 28px;
+    font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--muted);
+  }
+  .meta b{color:var(--ink-2);font-weight:500}
+
+  /* ---------- layout ---------- */
+  .cols{display:grid;grid-template-columns:1fr;gap:40px}
+  @media (min-width:1060px){
+    .cols{grid-template-columns:196px minmax(0,1fr);gap:56px;align-items:start}
+    nav.toc{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow-y:auto}
+  }
+  nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+  nav.toc a{
+    display:flex;gap:10px;text-decoration:none;color:var(--muted);
+    font-size:13.5px;padding:3px 0;line-height:1.35;
+  }
+  nav.toc a:hover{color:var(--accent)}
+  nav.toc .n{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--rule-strong);padding-top:2px}
+  nav.toc .lbl{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted);margin:0 0 10px;
+  }
+
+  main{min-width:0;max-width:840px}
+
+  /* ---------- sections ---------- */
+  section{margin:0 0 64px;scroll-margin-top:20px}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:10px;margin-bottom:10px;
+  }
+  .eyebrow::before{
+    content:"";width:22px;height:2px;background:var(--accent);flex:none;
+  }
+  h2{
+    font-family:"Zilla Slab",Georgia,serif;font-weight:600;
+    font-size:clamp(1.55rem,3vw,2.05rem);line-height:1.15;letter-spacing:-.01em;
+    margin:0 0 6px;text-wrap:balance;
+  }
+  h2 .num{color:var(--rule-strong);font-weight:400;margin-right:.5ch}
+  h3{
+    font-family:"Zilla Slab",Georgia,serif;font-weight:600;font-size:1.2rem;
+    margin:34px 0 8px;line-height:1.25;text-wrap:balance;
+  }
+  h4{
+    font-family:"IBM Plex Sans",sans-serif;font-weight:600;font-size:.95rem;
+    margin:22px 0 6px;letter-spacing:.005em;
+  }
+  p{margin:0 0 14px;max-width:68ch}
+  .lede{color:var(--ink-2);font-size:1.04rem;max-width:66ch;margin-bottom:22px}
+  ul,ol{margin:0 0 16px;padding-left:22px;max-width:68ch}
+  li{margin-bottom:7px}
+  li::marker{color:var(--rule-strong)}
+  strong{font-weight:600}
+  a{color:var(--accent)}
+  code{
+    font-family:"IBM Plex Mono",monospace;font-size:.85em;
+    background:var(--code-bg);padding:1px 5px;border-radius:3px;
+    color:var(--ink);
+  }
+  hr{border:0;border-top:1px solid var(--rule);margin:40px 0}
+
+  /* ---------- decision block ---------- */
+  .decision{
+    background:var(--surface);border:1px solid var(--rule);
+    border-left:3px solid var(--accent);
+    padding:20px 22px;margin:22px 0;border-radius:0 4px 4px 0;
+    box-shadow:var(--shadow);
+  }
+  .decision .tag{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:8px;
+  }
+  .decision h4{margin:0 0 10px;font-size:1.05rem;font-family:"Zilla Slab",serif;font-weight:600}
+  .decision p:last-child{margin-bottom:0}
+  .opts{list-style:none;padding:0;margin:0 0 12px}
+  .opts li{
+    display:flex;gap:10px;align-items:baseline;margin-bottom:5px;font-size:.94rem;
+    color:var(--ink-2);
+  }
+  .opts .mark{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;flex:none;width:5.5ch;
+    color:var(--muted);
+  }
+  .opts li.picked{color:var(--ink)}
+  .opts li.picked .mark{color:var(--accent);font-weight:500}
+
+  /* ---------- callouts ---------- */
+  .note{
+    border:1px solid var(--rule);background:var(--surface-2);
+    padding:14px 16px;margin:20px 0;border-radius:4px;font-size:.94rem;
+  }
+  .note.warn{border-color:var(--caution);background:var(--caution-bg)}
+  .note.risk{border-color:var(--risk);background:var(--risk-bg)}
+  .note .t{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;display:block;margin-bottom:5px;color:var(--muted);
+  }
+  .note.warn .t{color:var(--caution)}
+  .note.risk .t{color:var(--risk)}
+  .note p{margin:0;max-width:none}
+  .note p + p{margin-top:9px}
+
+  /* ---------- tables ---------- */
+  .tw{overflow-x:auto;margin:20px 0;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:520px}
+  th{
+    text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:500;
+    font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    padding:11px 14px;border-bottom:1px solid var(--rule-strong);white-space:nowrap;
+    background:var(--surface-2);
+  }
+  td{padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:top;color:var(--ink-2)}
+  tr:last-child td{border-bottom:0}
+  td:first-child{color:var(--ink);font-weight:500}
+  .num-col{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+  td code{background:transparent;padding:0;font-size:.86em}
+  .phase{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.06em;
+    padding:2px 7px;border-radius:3px;white-space:nowrap;
+    border:1px solid var(--rule-strong);color:var(--muted);
+  }
+  .phase.p1{border-color:var(--accent);color:var(--accent);background:var(--accent-2)}
+
+  /* ---------- code / tree ---------- */
+  pre{
+    font-family:"IBM Plex Mono",monospace;font-size:12.5px;line-height:1.65;
+    background:var(--surface);border:1px solid var(--rule);border-radius:4px;
+    padding:16px 18px;overflow-x:auto;margin:18px 0;color:var(--ink-2);
+  }
+  pre b{color:var(--ink);font-weight:500}
+  pre .c{color:var(--muted)}
+  pre .k{color:var(--accent);font-weight:500}
+
+  /* ---------- figures ---------- */
+  figure{margin:26px 0;border:1px solid var(--rule);border-radius:4px;background:var(--surface);padding:20px 20px 0}
+  figure svg{display:block;max-width:100%;height:auto;color:var(--ink-2)}
+  figcaption{
+    font-size:.86rem;color:var(--muted);padding:14px 0 16px;
+    border-top:1px solid var(--rule);margin-top:16px;max-width:70ch;
+  }
+  figcaption b{color:var(--ink-2);font-weight:500}
+  .svg-box{fill:var(--surface);stroke:var(--rule-strong);stroke-width:1.25}
+  .svg-box-a{fill:var(--accent-2);stroke:var(--accent);stroke-width:1.5}
+  .svg-t{fill:var(--ink);font-family:"IBM Plex Sans",sans-serif;font-size:12.5px}
+  .svg-t-s{fill:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:10.5px}
+  .svg-t-a{fill:var(--accent);font-family:"IBM Plex Mono",monospace;font-size:10.5px}
+  .svg-l{stroke:var(--ink-2);stroke-width:1.4;fill:none}
+  .svg-l-r{stroke:var(--risk);stroke-width:1.4;fill:none;stroke-dasharray:5 4}
+
+  /* ---------- portal grid ---------- */
+  .portals{display:grid;grid-template-columns:1fr;gap:0;margin:22px 0;
+    border:1px solid var(--rule);border-radius:4px;overflow:hidden;background:var(--surface)}
+  @media (min-width:660px){.portals{grid-template-columns:1fr 1fr}}
+  .portal{padding:18px 20px;border-bottom:1px solid var(--rule)}
+  @media (min-width:660px){
+    .portal:nth-child(odd){border-right:1px solid var(--rule)}
+  }
+  .portal h4{margin:0 0 3px;font-family:"Zilla Slab",serif;font-size:1.06rem;font-weight:600}
+  .portal .dev{
+    font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:9px;
+  }
+  .portal p{font-size:.9rem;margin:0 0 9px;color:var(--ink-2)}
+  .portal .job{font-size:.9rem;margin:0}
+  .portal .job span{color:var(--muted)}
+
+  /* ---------- misc ---------- */
+  .stack{display:flex;flex-direction:column;gap:0}
+  .kv{
+    display:grid;grid-template-columns:1fr;gap:0;margin:20px 0;
+    border:1px solid var(--rule);border-radius:4px;background:var(--surface);overflow:hidden;
+  }
+  .kv > div{padding:13px 16px;border-bottom:1px solid var(--rule)}
+  .kv > div:last-child{border-bottom:0}
+  .kv dt{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.09em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:4px;
+  }
+  .kv dd{margin:0;font-size:.94rem;color:var(--ink-2)}
+  .end{
+    border-top:2px solid var(--ink);margin-top:56px;padding-top:20px;
+    font-size:.88rem;color:var(--muted);max-width:68ch;
+  }
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="shell">
+
+<header class="masthead">
+  <div class="kicker">Architecture brief · v1 · not yet built</div>
+  <h1>Drive-Native School OS</h1>
+  <p class="standfirst">A school management system whose entire backend is Google Drive, Sheets and Docs, whose front end is an Apps&nbsp;Script web app, and whose unit of sale is a folder you can hand to any 600-student school in Karachi in an afternoon.</p>
+  <div class="meta">
+    <span><b>Target</b> 100–1,200 students per school</span>
+    <span><b>Stack</b> Apps Script · Sheets · Drive · clasp</span>
+    <span><b>Status</b> design only — nothing implemented</span>
+  </div>
+</header>
+
+<div class="cols">
+
+<nav class="toc">
+  <p class="lbl">Contents</p>
+  <ol>
+    <li><a href="#s0"><span class="n">00</span><span class="lbl-t">The six calls</span></a></li>
+    <li><a href="#s1"><span class="n">01</span><span class="lbl-t">What you're selling</span></a></li>
+    <li><a href="#s2"><span class="n">02</span><span class="lbl-t">Constraint budget</span></a></li>
+    <li><a href="#s3"><span class="n">03</span><span class="lbl-t">Tenancy &amp; deployment</span></a></li>
+    <li><a href="#s4"><span class="n">04</span><span class="lbl-t">Identity &amp; scoping</span></a></li>
+    <li><a href="#s5"><span class="n">05</span><span class="lbl-t">Data architecture</span></a></li>
+    <li><a href="#s6"><span class="n">06</span><span class="lbl-t">Module map</span></a></li>
+    <li><a href="#s7"><span class="n">07</span><span class="lbl-t">Exams &amp; report cards</span></a></li>
+    <li><a href="#s8"><span class="n">08</span><span class="lbl-t">Fees</span></a></li>
+    <li><a href="#s9"><span class="n">09</span><span class="lbl-t">Discipline</span></a></li>
+    <li><a href="#s10"><span class="n">10</span><span class="lbl-t">Attendance &amp; timetable</span></a></li>
+    <li><a href="#s11"><span class="n">11</span><span class="lbl-t">Year rollover</span></a></li>
+    <li><a href="#s12"><span class="n">12</span><span class="lbl-t">The seven interfaces</span></a></li>
+    <li><a href="#s13"><span class="n">13</span><span class="lbl-t">Survival patterns</span></a></li>
+    <li><a href="#s14"><span class="n">14</span><span class="lbl-t">Repo &amp; workflow</span></a></li>
+    <li><a href="#s15"><span class="n">15</span><span class="lbl-t">What kills this</span></a></li>
+    <li><a href="#s16"><span class="n">16</span><span class="lbl-t">Decisions I need</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<!-- ============ 00 ============ -->
+<section id="s0">
+  <div class="eyebrow">Summary</div>
+  <h2><span class="num">00</span>The six calls</h2>
+  <p class="lede">If you read nothing else, these are the decisions that shape everything downstream. Four of them push back on the plan as you described it.</p>
+
+  <ol>
+    <li><strong>Split code from data.</strong> The folder you copy holds only Sheets, Docs and PDFs. The code is a <em>standalone</em> Apps Script project provisioned per school and pushed with clasp. "Copy the folder" stays true for the data — the code ships as a deployment, not as a file inside the folder.</li>
+    <li><strong>Each school owns its own Google account.</strong> Apps Script quotas are charged to the account that <em>executes</em> the script. If you own 500 schools' scripts, all 500 share your daily budget and you fall over somewhere around school #15. Their account, their quota, their storage, their liability — you sit on it as an editor.</li>
+    <li><strong>Build your own login.</strong> Parents in this market do not have Gmail accounts, and Google's identity API returns an empty string for anonymous web-app visitors anyway. Phone number + PIN, sessions in <code>CacheService</code>, every call re-checked on the server.</li>
+    <li><strong>Never give a teacher or parent Drive access.</strong> They get one URL and nothing else. All data isolation lives in your code, not in Drive sharing. The moment a class teacher is an editor on the fees spreadsheet, the product is over.</li>
+    <li><strong>Fees is the wedge, not report cards.</strong> Attendance and mark sheets win the demo. Fee collection, defaulter lists and printed challans win the cheque. Build the money module to production quality first.</li>
+    <li><strong>Append, cache, resume.</strong> Every write appends to a ledger where it can, every hot read comes from cache, every batch job checkpoints and resumes. That is the whole survival kit for a 6-minute execution limit.</li>
+  </ol>
+</section>
+
+<!-- ============ 01 ============ -->
+<section id="s1">
+  <div class="eyebrow">Product framing</div>
+  <h2><span class="num">01</span>What you're actually selling</h2>
+
+  <p>Not software. You are selling <strong>a school's office running without a filing cabinet</strong> — and the thing that makes it sellable at this price point is that Google hosts it for free and you never run a server.</p>
+
+  <p>Be honest about the size envelope, because it determines who you say no to:</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>School size</th><th>Fit</th><th>Why</th></tr>
+    <tr><td>Under 100</td><td>Works, hard to monetise</td><td>They will keep using a register. Sell only if they ask.</td></tr>
+    <tr><td>100–1,200</td><td class="num-col" style="text-align:left;color:var(--accent);font-weight:500">Sweet spot</td><td>Data volumes trivial, concurrency manageable, budget exists.</td></tr>
+    <tr><td>1,200–2,500</td><td>Strains</td><td>Result-day concurrency and batch print windows start hurting. Needs Workspace.</td></tr>
+    <tr><td>2,500+</td><td>Decline or re-platform</td><td>You are fighting the platform. Different product.</td></tr>
+  </table>
+  </div>
+
+  <p>The strategic advantage of the Sheets backend is not cost — it is <strong>the escape hatch</strong>. When your software does not handle some edge case (a student admitted mid-term at a negotiated fee, a mark corrected after printing), the office clerk opens the sheet and fixes the row. No support ticket. No release. That single property is why this beats a "real" web app in a market where you cannot afford a support desk.</p>
+
+  <p>It is also the biggest liability, and §13 tells you how to defend against it.</p>
+</section>
+
+<!-- ============ 02 ============ -->
+<section id="s2">
+  <div class="eyebrow">Constraints</div>
+  <h2><span class="num">02</span>The constraint budget</h2>
+  <p class="lede">Apps Script is generous with storage and stingy with time and concurrency. Design against the second column, not the first.</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>Limit</th><th>Consumer Gmail</th><th>Workspace</th><th>What it costs you</th></tr>
+    <tr><td>Execution time per run</td><td class="num-col">6 min</td><td class="num-col">6 min</td><td>600 report cards cannot be one run. Needs checkpointing.</td></tr>
+    <tr><td>Simultaneous executions</td><td class="num-col">30</td><td class="num-col">30</td><td><strong>The real ceiling.</strong> Result-day parent traffic queues behind this.</td></tr>
+    <tr><td>Trigger runtime / day</td><td class="num-col">90 min</td><td class="num-col">6 hr</td><td>Nightly jobs must be lean on consumer accounts.</td></tr>
+    <tr><td>Email recipients / day</td><td class="num-col">100</td><td class="num-col">1,500</td><td>You cannot email 600 parents from a Gmail account. Ever.</td></tr>
+    <tr><td>Cells per spreadsheet</td><td class="num-col">10 M</td><td class="num-col">10 M</td><td>Comfortable — but split by year anyway, for speed not size.</td></tr>
+    <tr><td>UrlFetch calls / day</td><td class="num-col">20,000</td><td class="num-col">20,000</td><td>Licence heartbeat and WhatsApp API fit easily.</td></tr>
+  </table>
+  </div>
+
+  <div class="note warn">
+    <span class="t">Verify before you commit</span>
+    <p>Google adjusts these. Re-read the current Apps Script quota page before you promise anything to a school, and put the numbers in a test that fails loudly when you approach them. The <em>relative</em> fact — consumer accounts are dramatically weaker, and every quota is billed to the executing user — is what the architecture rests on, and that is stable.</p>
+  </div>
+
+  <h3>Scale maths for a 600-student school</h3>
+  <p>Run the numbers before believing the platform is too small. One academic year:</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>Data</th><th>Shape</th><th class="num-col">Volume / year</th></tr>
+    <tr><td>Students</td><td>1 row each</td><td class="num-col">600 rows</td></tr>
+    <tr><td>Attendance</td><td>1 row per student per month, 31 day-columns</td><td class="num-col">6,600 rows · 205k cells</td></tr>
+    <tr><td>Marks</td><td>student × subject × exam (8 × 3)</td><td class="num-col">14,400 rows</td></tr>
+    <tr><td>Fee invoices + payments</td><td>monthly cycle</td><td class="num-col">~14,400 rows</td></tr>
+    <tr><td>Discipline entries</td><td>~15 per student per year</td><td class="num-col">~9,000 rows</td></tr>
+    <tr><td>Report card PDFs</td><td>3 terms</td><td class="num-col">1,800 files</td></tr>
+  </table>
+  </div>
+
+  <p><strong>Nothing here is close to a storage limit.</strong> Every capacity problem you will hit is a <em>time</em> problem: a batch that exceeds six minutes, or 200 parents refreshing at once. Optimise for those two and ignore the rest.</p>
+</section>
+
+<!-- ============ 03 ============ -->
+<section id="s3">
+  <div class="eyebrow">Decision · tenancy</div>
+  <h2><span class="num">03</span>Tenancy and deployment</h2>
+  <p class="lede">This is where your "copy the folder and hooray" model needs one correction — after which it works better than you described it.</p>
+
+  <div class="decision">
+    <div class="tag">Decision 01</div>
+    <h4>Does the deployable unit include the code?</h4>
+    <ul class="opts">
+      <li><span class="mark">no</span>Bound script inside a copied Sheet. Copy behaviour across the Drive API is inconsistent, the copy carries no deployment, and every school ends up with a silently forked codebase you cannot patch.</li>
+      <li><span class="mark">no</span>Apps Script <em>library</em> shared to all schools. Central updates, but Google's own docs warn that library calls slow execution measurably — and you would be paying that tax on every parent page load.</li>
+      <li class="picked"><span class="mark">yes</span><strong>Standalone script per school, code pushed by clasp from one repo.</strong> Data folder is copied; code is deployed.</li>
+    </ul>
+    <p><strong>Why:</strong> it keeps runtime fast (no library indirection), gives every school an isolated data store and its own quota pool, and leaves you one <code>git</code> history as the source of truth. Updating 300 schools becomes a loop over 300 script IDs, not 300 manual copies.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 720 268" role="img" aria-label="One source repository pushes code by clasp into a separate Apps Script project for each school, and each school's script reads and writes only that school's own Drive folder.">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <rect class="svg-box-a" x="14" y="96" width="146" height="66" rx="3"/>
+      <text class="svg-t" x="87" y="122" text-anchor="middle">Source repo</text>
+      <text class="svg-t-s" x="87" y="140" text-anchor="middle">one codebase, git</text>
+
+      <path class="svg-l" d="M160 129 C 210 129, 220 56, 268 56" marker-end="url(#ar)"/>
+      <path class="svg-l" d="M160 129 H 268" marker-end="url(#ar)"/>
+      <path class="svg-l" d="M160 129 C 210 129, 220 202, 268 202" marker-end="url(#ar)"/>
+      <text class="svg-t-a" x="214" y="122" text-anchor="middle">clasp push</text>
+
+      <rect class="svg-box" x="270" y="30" width="158" height="52" rx="3"/>
+      <text class="svg-t" x="349" y="52" text-anchor="middle">Al-Noor · script</text>
+      <text class="svg-t-s" x="349" y="68" text-anchor="middle">their Google account</text>
+
+      <rect class="svg-box" x="270" y="106" width="158" height="52" rx="3"/>
+      <text class="svg-t" x="349" y="128" text-anchor="middle">Iqra · script</text>
+      <text class="svg-t-s" x="349" y="144" text-anchor="middle">their Google account</text>
+
+      <rect class="svg-box" x="270" y="182" width="158" height="52" rx="3"/>
+      <text class="svg-t" x="349" y="204" text-anchor="middle">Falcon · script</text>
+      <text class="svg-t-s" x="349" y="220" text-anchor="middle">their Google account</text>
+
+      <path class="svg-l" d="M428 56 H 512" marker-end="url(#ar)"/>
+      <path class="svg-l" d="M428 132 H 512" marker-end="url(#ar)"/>
+      <path class="svg-l" d="M428 208 H 512" marker-end="url(#ar)"/>
+      <text class="svg-t-s" x="470" y="126" text-anchor="middle">reads / writes</text>
+
+      <rect class="svg-box" x="514" y="30" width="176" height="52" rx="3"/>
+      <text class="svg-t" x="602" y="52" text-anchor="middle">Al-Noor Drive folder</text>
+      <text class="svg-t-s" x="602" y="68" text-anchor="middle">sheets · docs · pdfs</text>
+
+      <rect class="svg-box" x="514" y="106" width="176" height="52" rx="3"/>
+      <text class="svg-t" x="602" y="128" text-anchor="middle">Iqra Drive folder</text>
+      <text class="svg-t-s" x="602" y="144" text-anchor="middle">sheets · docs · pdfs</text>
+
+      <rect class="svg-box" x="514" y="182" width="176" height="52" rx="3"/>
+      <text class="svg-t" x="602" y="204" text-anchor="middle">Falcon Drive folder</text>
+      <text class="svg-t-s" x="602" y="220" text-anchor="middle">sheets · docs · pdfs</text>
+
+      <text class="svg-t-s" x="14" y="256">One codebase · N isolated data stores · N separate quota pools</text>
+    </svg>
+    <figcaption><b>The fleet.</b> Code fans out from one repository; data never leaves the school that owns it. Because each script runs under its own school's account, the 6-minute limit, the trigger budget and the email quota are spent per school rather than pooled against you.</figcaption>
+  </figure>
+
+  <h3>Provisioning a new school</h3>
+  <p>Target: <strong>under 15 minutes, mostly unattended</strong>. A script running in your account does steps 1–6.</p>
+  <ol>
+    <li>Recursively copy the template Drive folder into the school's Drive (folders, template Sheets, Docs templates, empty PDF archive tree).</li>
+    <li>Create a standalone Apps Script project in the school's Drive via the Apps Script API.</li>
+    <li><code>clasp push</code> the current release tag into it.</li>
+    <li>Write the school's <code>Config</code> sheet — name, logo file ID, academic year, grade scheme, fee heads, board, licence key, spreadsheet IDs.</li>
+    <li>Create the web app deployment; record the URL.</li>
+    <li>Register the school in your fleet registry: <code>schoolId, scriptId, deploymentId, rootFolderId, version, licenceExpiry, studentCount</code>.</li>
+    <li>Hand over: principal signs into Google once to authorise the script, you seed staff accounts, bulk-import students from their existing Excel file.</li>
+  </ol>
+
+  <p>Step 7 is the only genuinely manual part, and the student import is where every deployment actually burns its time. Build the importer — a column-mapping wizard that eats whatever malformed spreadsheet the school hands you — as a <em>first-class module</em>, not a script you run by hand. It is the difference between 15 minutes and two days per school.</p>
+
+  <div class="note warn">
+    <span class="t">The authorisation screen</span>
+    <p>The first time the principal authorises the script, Google shows an "unverified app" warning that looks alarming to a non-technical person. Script them through it with a one-page illustrated guide, or do it screen-shared during handover. Several deployments will stall here if you leave them alone with it.</p>
+  </div>
+
+  <h3>Shipping updates to 300 schools</h3>
+  <p>Rings, not a big bang:</p>
+  <ul>
+    <li><strong>Ring 0</strong> — your own demo school, on every commit.</li>
+    <li><strong>Ring 1</strong> — three friendly schools, for a week.</li>
+    <li><strong>Ring 2</strong> — 20%, for a week.</li>
+    <li><strong>Ring 3</strong> — everyone.</li>
+  </ul>
+  <p>A rollout is a loop over the registry: <code>clasp push</code> then create a new deployment version against each script ID. Every school's <code>Config</code> records the version it is on, and a daily trigger heartbeats back to you with version, student count and error count. That heartbeat is also your support dashboard — you find out a school's nightly job has been failing for a week before they call you.</p>
+
+  <p>Schema changes are the dangerous part. Keep an ordered, idempotent <code>migrations[]</code> array in the code, run it on first execution after an update, and follow one rule absolutely: <strong>add columns, never rename or reorder them.</strong> A clerk who has inserted a column by hand must not be able to break the release.</p>
+
+  <div class="decision">
+    <div class="tag">Decision 02</div>
+    <h4>Who owns the Google account the system runs in?</h4>
+    <ul class="opts">
+      <li><span class="mark">no</span>You own everything, share it to the school. Total control and a clean kill-switch — but every school's execution burns <em>your</em> quota, and your Drive holds every school's student records. This collapses commercially and legally.</li>
+      <li class="picked"><span class="mark">yes</span><strong>The school owns its account and data; you hold editor rights on the script for updates.</strong></li>
+    </ul>
+    <p><strong>Why:</strong> quota isolation is decisive, and "your data never leaves your own Google account" is a genuine sales line to a principal who is nervous about handing over student records. Push them onto <strong>Google Workspace for Education Fundamentals</strong>, which is free for accredited schools — it lifts every quota, gives staff real @school accounts, and makes identity trivial. Support consumer Gmail as the fallback tier, with a feature flag in Config.</p>
+  </div>
+
+  <h3>Licensing, honestly</h3>
+  <p>If the school owns the script, a technical person can open the editor and delete your licence check. Accept that. Practical posture:</p>
+  <ul>
+    <li>Daily heartbeat validates the licence; on expiry, <strong>degrade rather than kill</strong> — watermark report cards, block the year rollover, disable bulk print. Never lock a school out of its own attendance data mid-term; that earns you a reputation you cannot recover from in a city where principals talk to each other.</li>
+    <li>Keep the renewal about things they cannot copy: board-format updates, new report card templates, WhatsApp delivery running through your API account, and support in Urdu on WhatsApp.</li>
+    <li>Do not over-invest in DRM. Your defence against piracy is that copying the code does not copy the <em>service</em>, and low-tier school owners are not going to maintain forked Apps Script.</li>
+  </ul>
+</section>
+
+<!-- ============ 04 ============ -->
+<section id="s4">
+  <div class="eyebrow">Decision · security</div>
+  <h2><span class="num">04</span>Identity, roles and scoping</h2>
+  <p class="lede">You asked how modules get scoped by identity. The answer has one uncomfortable precondition: in this architecture, the server has full authority over everything, always. Access control is not a feature you add — it is the only thing standing between a parent and the whole school's records.</p>
+
+  <div class="decision">
+    <div class="tag">Decision 03</div>
+    <h4>How do people log in?</h4>
+    <ul class="opts">
+      <li><span class="mark">no</span>Google Sign-In. Parents in this market do not have Google accounts, and with a web app set to "anyone, even anonymous", <code>Session.getActiveUser()</code> returns an empty string — so it does not even work for the ones who do.</li>
+      <li class="picked"><span class="mark">yes</span><strong>Your own identity table: phone number + PIN for parents, username + password for staff, signed session tokens.</strong> Google Sign-In becomes an optional upgrade for Workspace schools only.</li>
+    </ul>
+    <p><strong>Why:</strong> the phone number is the one identifier every parent in Karachi reliably has and remembers. It is also already in the school's admission register, so onboarding a parent requires no new data collection.</p>
+  </div>
+
+  <figure>
+    <svg viewBox="0 0 780 250" role="img" aria-label="A request flows from a parent's phone to the web app, which executes with the school owner's full authority, through a guard function that resolves role and scope, into the service and repository layers, and only then to Sheets. Parents and teachers never receive Drive access.">
+      <defs>
+        <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <rect class="svg-box" x="12" y="62" width="124" height="72" rx="3"/>
+      <text class="svg-t" x="74" y="90" text-anchor="middle">Parent phone</text>
+      <text class="svg-t-s" x="74" y="107" text-anchor="middle">plain HTML</text>
+
+      <path class="svg-l" d="M136 98 H 166" marker-end="url(#ar2)"/>
+      <text class="svg-t-s" x="151" y="88" text-anchor="middle">POST</text>
+
+      <rect class="svg-box" x="168" y="62" width="132" height="72" rx="3"/>
+      <text class="svg-t" x="234" y="86" text-anchor="middle">Web app</text>
+      <text class="svg-t-s" x="234" y="103" text-anchor="middle">runs as owner —</text>
+      <text class="svg-t-s" x="234" y="117" text-anchor="middle">full authority</text>
+
+      <path class="svg-l" d="M300 98 H 330" marker-end="url(#ar2)"/>
+
+      <rect class="svg-box-a" x="332" y="62" width="132" height="72" rx="3"/>
+      <text class="svg-t" x="398" y="86" text-anchor="middle">guard()</text>
+      <text class="svg-t-s" x="398" y="103" text-anchor="middle">token → role</text>
+      <text class="svg-t-s" x="398" y="117" text-anchor="middle">→ scope ids</text>
+
+      <path class="svg-l" d="M464 98 H 494" marker-end="url(#ar2)"/>
+      <text class="svg-t-s" x="479" y="88" text-anchor="middle">scoped</text>
+
+      <rect class="svg-box" x="496" y="62" width="132" height="72" rx="3"/>
+      <text class="svg-t" x="562" y="86" text-anchor="middle">Service + repo</text>
+      <text class="svg-t-s" x="562" y="103" text-anchor="middle">filters rows</text>
+      <text class="svg-t-s" x="562" y="117" text-anchor="middle">before returning</text>
+
+      <path class="svg-l" d="M628 98 H 658" marker-end="url(#ar2)"/>
+
+      <rect class="svg-box" x="660" y="62" width="108" height="72" rx="3"/>
+      <text class="svg-t" x="714" y="90" text-anchor="middle">Sheets</text>
+      <text class="svg-t-s" x="714" y="107" text-anchor="middle">Drive</text>
+
+      <path class="svg-l-r" d="M74 134 V 196 H 714 V 134"/>
+      <line x1="386" y1="188" x2="402" y2="204" stroke="var(--risk)" stroke-width="2"/>
+      <line x1="402" y1="188" x2="386" y2="204" stroke="var(--risk)" stroke-width="2"/>
+      <text class="svg-t-s" x="394" y="228" text-anchor="middle" style="fill:var(--risk)">no Drive sharing for parents or teachers — ever</text>
+    </svg>
+    <figcaption><b>Every request passes one door.</b> Because the web app executes with the owner's authority, a missing <code>guard()</code> call in a single endpoint exposes the entire school. The rule that makes this survivable: no service function ever touches a spreadsheet without a resolved session passed into it.</figcaption>
+  </figure>
+
+  <h3>The three dimensions of access</h3>
+  <p>Role alone is not enough — two class teachers have identical roles and must see different children. Model access as <strong>role × scope × field</strong>.</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>Role</th><th>Default scope</th><th>Sees</th><th>Never sees</th></tr>
+    <tr><td>Principal</td><td>Whole school</td><td>Everything, plus approvals and analytics</td><td>—</td></tr>
+    <tr><td>Office admin</td><td>Whole school</td><td>Admissions, records, documents, notices</td><td>Salary, staff appraisal</td></tr>
+    <tr><td>Accountant</td><td>Whole school</td><td>Fees, receipts, concessions, defaulters</td><td>Marks, discipline detail</td></tr>
+    <tr><td>Coordinator</td><td>One wing (e.g. Primary)</td><td>All classes in the wing, timetable, cover duty</td><td>Other wings, fee ledgers</td></tr>
+    <tr><td>Class teacher</td><td>One section</td><td>Own section's full profile, attendance, conduct</td><td>Fee amounts, guardian CNIC</td></tr>
+    <tr><td>Subject teacher</td><td>(class, subject) pairs</td><td>Marks entry for own subjects only</td><td>Other subjects' marks, all fees</td></tr>
+    <tr><td>Parent</td><td>Own children</td><td>Their child's results, attendance, fees, notices</td><td>Any other child, class rankings by name</td></tr>
+    <tr><td>Student</td><td>Self</td><td>Timetable, homework, own results</td><td>Fees, discipline reasons, staff notes</td></tr>
+  </table>
+  </div>
+
+  <h4>Session object</h4>
+  <pre><b>{</b>
+  userId:   <span class="k">"USR-0042"</span>,
+  personId: <span class="k">"STF-0011"</span>,        <span class="c">// staff or guardian record</span>
+  role:     <span class="k">"subject_teacher"</span>,
+  scope: {
+    type: <span class="k">"subject_pairs"</span>,     <span class="c">// school | wing | section | subject_pairs | children | self</span>
+    ids:  [<span class="k">"9-A:MATH"</span>, <span class="k">"9-B:MATH"</span>, <span class="k">"10-A:MATH"</span>]
+  },
+  year: <span class="k">"2026-27"</span>,
+  exp:  1788000000
+<b>}</b></pre>
+
+  <p>Scope IDs are resolved <strong>at login</strong> from the assignment tables and baked into a signed token, so the hot path costs no extra sheet reads. Bump a version counter in <code>PropertiesService</code> whenever assignments change; tokens issued before the bump are re-resolved on next use.</p>
+
+  <h4>The guard contract</h4>
+  <p>One function, called first in every single endpoint, no exceptions:</p>
+  <pre><span class="k">guard</span>(token, <span class="k">"marks.enter"</span>, { classId: <span class="k">"9-A"</span>, subjectId: <span class="k">"MATH"</span> })
+  <span class="c">→ returns session, or throws</span>
+
+<span class="c">// It checks three things, in order:</span>
+<span class="c">//   1. token valid and unexpired</span>
+<span class="c">//   2. role holds the permission "marks.enter"   (matrix in Config)</span>
+<span class="c">//   3. the target falls inside session.scope.ids  (the part everyone forgets)</span></pre>
+
+  <p>Step 3 is where real systems leak. A teacher who can enter marks for 9-A can trivially edit the request to say 10-C; only an explicit scope check stops them. Make it impossible to skip by having the repository layer <em>require</em> a session argument — a function that reads marks without one should not exist.</p>
+
+  <p>The permission matrix itself lives in a <code>Config</code> sheet (rows = roles, columns = permission keys), so a school that wants its class teachers to see fee status can be accommodated without a code change. Field-level filtering is a per-role allowlist applied on the way out: <code>project(studentRow, session)</code> strips guardian CNIC and fee balance before a teacher's payload ever leaves the server.</p>
+
+  <div class="note risk">
+    <span class="t">Threat model, plainly</span>
+    <p>Anonymous web app + owner authority means your login endpoint is internet-facing and protects real children's records. Minimums: PIN lockout after 5 failures, per-phone rate limiting in <code>CacheService</code>, tokens that expire in hours not weeks, no PII in URLs (it lands in browser history on shared family phones), and salted iterated hashing for PINs — never plaintext, never a bare single-pass hash.</p>
+    <p>A 4-digit PIN is weak by any standard. It is also the only thing this market will actually use. Compensate with lockout and rate limiting rather than pretending a stronger policy will survive contact with parents.</p>
+  </div>
+</section>
+
+<!-- ============ 05 ============ -->
+<section id="s5">
+  <div class="eyebrow">Schema</div>
+  <h2><span class="num">05</span>Data architecture</h2>
+
+  <h3>Drive layout — the copyable unit</h3>
+  <pre><b>📁 [School Name] — School OS/</b>
+├── <b>01 Data/</b>                     <span class="c">← never shared beyond owner + vendor</span>
+│   ├── Core.sheet                <span class="c">Students, Guardians, Staff, Users, Classes, Enrollment</span>
+│   ├── Academics.sheet           <span class="c">Subjects, Assignments, Timetable, Syllabus</span>
+│   ├── Attendance_2026-27.sheet  <span class="c">one tab per month, wide grid</span>
+│   ├── Exams_2026-27.sheet       <span class="c">ExamDefs, Marks, GradeScheme, Locks</span>
+│   ├── Fees_2026-27.sheet        <span class="c">FeeHeads, Structure, Invoices, Payments, Concessions</span>
+│   ├── Discipline_2026-27.sheet  <span class="c">append-only points ledger</span>
+│   ├── Config.sheet              <span class="c">school profile, permissions matrix, feature flags</span>
+│   └── AuditLog.sheet            <span class="c">append-only</span>
+├── <b>02 Templates/</b>
+│   ├── ReportCard_Primary.doc
+│   ├── ReportCard_Secondary.doc
+│   ├── FeeChallan.doc            <span class="c">3 copies: bank / school / parent</span>
+│   ├── SchoolLeavingCert.doc
+│   └── CharacterCert.doc
+├── <b>03 Generated/</b>
+│   ├── ReportCards/2026-27/Term1/
+│   ├── Challans/2026-27/2026-08/
+│   └── Certificates/
+├── <b>04 Student Files/</b>            <span class="c">photos, B-Form scans, previous school records</span>
+├── <b>05 Notices/</b>
+└── <b>_Backups/</b>                    <span class="c">nightly copies, 30-day rolling</span></pre>
+
+  <div class="decision">
+    <div class="tag">Decision 04</div>
+    <h4>One spreadsheet or many?</h4>
+    <ul class="opts">
+      <li><span class="mark">no</span>One workbook with 40 tabs. Simple to reason about; every write locks the whole file, opening it in a browser takes 20 seconds by March, and one bad edit corrupts everything.</li>
+      <li class="picked"><span class="mark">yes</span><strong>Split by domain, and by academic year for transactional data.</strong></li>
+    </ul>
+    <p><strong>Why:</strong> lock contention is per-spreadsheet. The accountant recording a payment should never block a teacher saving attendance. Year-splitting also means archiving a finished year is one file move, and last year's 200,000 attendance cells never slow down today's lookup.</p>
+  </div>
+
+  <h3>Identifier strategy</h3>
+  <p>Never use row numbers as identity — a clerk sorting a sheet would silently reassign every child's record. Use human-readable, immutable string keys:</p>
+  <ul>
+    <li><code>STU-2026-0417</code> — internal student key, never reused, never changes even if the child leaves and returns</li>
+    <li><code>GR No.</code> — the school's own General Register number, kept as a <em>separate</em> field because schools reuse and reformat it and you cannot control that</li>
+    <li><code>STF-0032</code>, <code>GRD-0891</code>, <code>INV-2026-08-0417</code>, <code>RCPT-2026-004512</code></li>
+  </ul>
+
+  <h3>Core sheet schemas</h3>
+  <p>Abbreviated, but these are the columns that matter. Note the Pakistan-specific fields — they are not optional here.</p>
+
+  <pre><b>Students</b>
+  student_id · gr_no · adm_no · name_en · <b>name_ur</b> · father_name · <b>b_form_no</b>
+  dob · gender · religion · class_id · section · roll_no · house
+  admission_date · status(active|left|struck_off) · photo_file_id
+  address · area · transport_route · medical_notes · previous_school
+
+<b>Guardians</b>
+  guardian_id · student_ids[] · relation · name · <b>cnic</b> · <b>phone_primary</b>
+  phone_alt · whatsapp_ok · occupation · email(optional) · is_fee_payer
+
+<b>Users</b>            <span class="c">← the login table; one row per person who signs in</span>
+  user_id · person_id · person_type(staff|guardian|student) · login_id(phone|username)
+  pin_hash · salt · role · scope_type · scope_ids · status · last_login · failed_count
+
+<b>Enrollment</b>       <span class="c">← year-scoped; this is what makes history work</span>
+  enrollment_id · student_id · year · class_id · section · roll_no
+  result(promoted|detained|left) · final_percentage</pre>
+
+  <div class="note">
+    <span class="t">Why Enrollment is separate from Students</span>
+    <p>A student's class changes every year. If you store <code>class</code> on the student row you destroy history the moment you promote them, and last year's report card becomes unreproducible. <code>Students</code> holds identity; <code>Enrollment</code> holds "who was in which section in which year". Every year-scoped query joins through it.</p>
+  </div>
+
+  <h4>Ledgers, not mutable balances</h4>
+  <p>Fees and discipline are both <strong>append-only ledgers</strong>. You never update a balance field — you append a row and reduce over it. Two payments landing in the same second cannot corrupt each other, corrections are recorded rather than hidden, and the audit trail is free:</p>
+  <pre><b>FeePayments</b>   <span class="c">append only, never edited</span>
+  payment_id · student_id · invoice_id · date · amount · mode(cash|bank|jazzcash|easypaisa)
+  reference_no · received_by · receipt_no · <b>reversal_of</b>(payment_id or blank) · note
+
+<span class="c">// balance = Σ invoices − Σ payments (excluding reversed pairs)</span>
+<span class="c">// a mistaken entry is corrected by appending a reversal, never by deleting</span></pre>
+
+  <div class="note warn">
+    <span class="t">Rule: no formulas in data sheets</span>
+    <p>Zero <code>=SUM()</code>, zero <code>VLOOKUP</code>, zero conditional formatting that carries meaning. All computation happens in code. Formulas break the instant a clerk inserts a row, they make batch writes 10× slower, and they produce numbers your code disagrees with. Data sheets hold raw values only. Build a <code>validateSchema()</code> that runs on load and screams if a header moved.</p>
+  </div>
+</section>
+
+<!-- ============ 06 ============ -->
+<section id="s6">
+  <div class="eyebrow">Scope</div>
+  <h2><span class="num">06</span>Module map</h2>
+  <p class="lede">Phase 1 is what you can sell. Everything else is what keeps them renewing.</p>
+
+  <div class="tw">
+  <table>
+    <tr><th>Module</th><th>Phase</th><th>What it does</th></tr>
+    <tr><td>Student records</td><td><span class="phase p1">MVP</span></td><td>Admission, profile, guardians, documents, transfers, struck-off register</td></tr>
+    <tr><td>Staff records</td><td><span class="phase p1">MVP</span></td><td>Profiles, subjects taught, class-teacher assignment, leave balance</td></tr>
+    <tr><td>Fees</td><td><span class="phase p1">MVP</span></td><td>Structure, monthly invoicing, challan print, collection, defaulters, concessions</td></tr>
+    <tr><td>Attendance</td><td><span class="phase p1">MVP</span></td><td>Daily student marking, monthly registers, absentee alerts, staff attendance</td></tr>
+    <tr><td>Exams &amp; report cards</td><td><span class="phase p1">MVP</span></td><td>Marks entry, verification lock, grading, batch report card print</td></tr>
+    <tr><td>Parent portal</td><td><span class="phase p1">MVP</span></td><td>Results, attendance, fee status, notices — phone + PIN</td></tr>
+    <tr><td>Bulk import</td><td><span class="phase p1">MVP</span></td><td>Column-mapping wizard for the school's existing Excel mess</td></tr>
+    <tr><td>Notices &amp; messaging</td><td><span class="phase">2</span></td><td>Announcements, WhatsApp click-to-send batches, targeted by class</td></tr>
+    <tr><td>Timetable</td><td><span class="phase">2</span></td><td>Grid editor with clash detection, teacher load, daily cover list</td></tr>
+    <tr><td>Discipline</td><td><span class="phase">2</span></td><td>Merit/demerit ledger, house points, conduct grade, parent notification</td></tr>
+    <tr><td>Homework / diary</td><td><span class="phase">2</span></td><td>Teachers post per section, parents see today's diary</td></tr>
+    <tr><td>Certificates</td><td><span class="phase">2</span></td><td>Leaving, character, bonafide — Doc template to PDF with serial register</td></tr>
+    <tr><td>Year rollover</td><td><span class="phase">2</span></td><td>Promote, archive, carry forward dues, re-section — see §11</td></tr>
+    <tr><td>Transport</td><td><span class="phase">3</span></td><td>Routes, stages, van fee, per-route rosters</td></tr>
+    <tr><td>Principal analytics</td><td><span class="phase">3</span></td><td>Collection rate, attendance trend, subject-wise performance, teacher load</td></tr>
+    <tr><td>Library &amp; inventory</td><td><span class="phase">3</span></td><td>Light issue/return; genuinely low demand at this tier — do not lead with it</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ============ 07 ============ -->
+<section id="s7">
+  <div class="eyebrow">Deep dive</div>
+  <h2><span class="num">07</span>Exams, mark sheets and report cards</h2>
+  <p class="lede">The highest-stakes module in the product. A wrong mark on a printed report card is the one bug a principal will not forgive, so the workflow matters more than the code.</p>
+
+  <h3>The entry-to-print pipeline</h3>
+  <ol>
+    <li><strong>Exam definition</strong> — term, applicable classes, subject list with max marks and weightage, entry deadline.</li>
+    <li><strong>Marks entry</strong> — subject teacher, own <code>(class, subject)</code> pairs only, one grid per section. Validation on every cell: numeric, within 0–max, or flagged absent. Autosave per row.</li>
+    <li><strong>Class teacher verification</strong> — sees the full section across all subjects, spots the blanks and the impossible totals, flags back to subject teachers.</li>
+    <li><strong>Exam controller locks</strong> — the <code>(exam, class, subject)</code> tuple is frozen. After this point an edit requires principal override and writes an audit row naming who changed what from what to what. This single feature prevents the classic disaster: marks quietly changed after report cards were printed.</li>
+    <li><strong>Compilation</strong> — totals, percentage, grade from the school's scheme, position in section and class with explicit tie handling, pass/fail against per-subject minimums, promoted/detained.</li>
+    <li><strong>Print</strong> — batch, by section.</li>
+    <li><strong>Publish</strong> — a separate flag. Report cards are visible to parents only when the principal publishes, never when they are generated.</li>
+  </ol>
+
+  <p>Ship the standard Pakistani board grading as the default and make it fully editable per school, since private schools invent their own bands constantly:</p>
+
+  <div class="tw">
+  <table style="min-width:auto">
+    <tr><th>Grade</th><th class="num-col">A1</th><th class="num-col">A</th><th class="num-col">B</th><th class="num-col">C</th><th class="num-col">D</th><th class="num-col">E</th><th class="num-col">F</th></tr>
+    <tr><td>Percentage</td><td class="num-col">80+</td><td class="num-col">70–79</td><td class="num-col">60–69</td><td class="num-col">50–59</td><td class="num-col">40–49</td><td class="num-col">33–39</td><td class="num-col">&lt;33</td></tr>
+  </table>
+  </div>
+
+  <h3>Generating 600 PDFs without dying</h3>
+  <p>Two paths, and choosing the right one per situation is the whole trick:</p>
+
+  <div class="kv">
+    <div><dt>Batch print — one PDF per section</dt><dd>Build a <em>single</em> document containing all 40 students in the section, separated by page breaks, then export it once as PDF. One file to open, one to send to the printer, roughly 40× fewer Drive operations than generating individual files. This is what the office actually wants: they print class by class.</dd></div>
+    <div><dt>Parent portal — one PDF per child</dt><dd>Generated lazily on first request and cached in Drive, or pre-generated overnight for the whole school after publish. Never generated synchronously while a parent waits.</dd></div>
+  </div>
+
+  <p>For the rendering itself, HTML gives you far more layout control than Docs placeholder replacement — and Apps Script can convert an HTML blob straight to PDF, which handles the table-heavy, tightly-boxed layout a report card needs (and gets you <code>page-break-after</code> for the batch case). Keep the Docs template path as the authoring-friendly fallback for schools that want to fiddle with their own wording.</p>
+
+  <p>Set the Urdu fields in <strong>Noto Nastaliq Urdu</strong> and test the render early — bilingual name rendering is the detail that makes a report card look legitimate to a Karachi parent, and it is much easier to get right at the start than to retrofit.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 196" role="img" aria-label="A batch job processes forty students per run, and when it approaches the six-minute execution limit it saves a cursor and schedules a trigger to resume, looping back until all students are processed.">
+      <defs>
+        <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,1 10,5 0,9" fill="currentColor"/>
+        </marker>
+      </defs>
+
+      <rect class="svg-box" x="14" y="92" width="112" height="56" rx="3"/>
+      <text class="svg-t" x="70" y="115" text-anchor="middle">Start job</text>
+      <text class="svg-t-s" x="70" y="132" text-anchor="middle">cursor = 0</text>
+
+      <path class="svg-l" d="M126 120 H 168" marker-end="url(#ar3)"/>
+
+      <rect class="svg-box-a" x="170" y="92" width="140" height="56" rx="3"/>
+      <text class="svg-t" x="240" y="115" text-anchor="middle">Render next 40</text>
+      <text class="svg-t-s" x="240" y="132" text-anchor="middle">≈ 90 seconds</text>
+
+      <path class="svg-l" d="M310 120 H 352" marker-end="url(#ar3)"/>
+
+      <rect class="svg-box" x="354" y="92" width="128" height="56" rx="3"/>
+      <text class="svg-t" x="418" y="115" text-anchor="middle">Time left?</text>
+      <text class="svg-t-s" x="418" y="132" text-anchor="middle">check elapsed</text>
+
+      <path class="svg-l" d="M418 92 V 66" marker-end="url(#ar3)"/>
+      <text class="svg-t-s" x="432" y="82">under 60 s</text>
+
+      <rect class="svg-box" x="354" y="10" width="128" height="56" rx="3"/>
+      <text class="svg-t" x="418" y="33" text-anchor="middle">Save cursor</text>
+      <text class="svg-t-s" x="418" y="50" text-anchor="middle">+ 1-min trigger</text>
+
+      <path class="svg-l" d="M354 38 H 240 V 92" marker-end="url(#ar3)"/>
+      <text class="svg-t-a" x="292" y="30" text-anchor="middle">resume</text>
+
+      <path class="svg-l" d="M482 120 H 524" marker-end="url(#ar3)"/>
+      <text class="svg-t-s" x="503" y="110" text-anchor="middle">done</text>
+
+      <rect class="svg-box" x="526" y="92" width="160" height="56" rx="3"/>
+      <text class="svg-t" x="606" y="115" text-anchor="middle">One PDF per section</text>
+      <text class="svg-t-s" x="606" y="132" text-anchor="middle">delete trigger, notify</text>
+
+      <text class="svg-t-s" x="14" y="184">Job state lives in a Jobs sheet — survives a crash, and the office can watch progress</text>
+    </svg>
+    <figcaption><b>The resumable batch.</b> This pattern is not optional — it is the only way anything school-wide (report cards, monthly invoices, year rollover) completes under a 6-minute cap. Build it once as a generic job runner and every heavy module reuses it.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ 08 ============ -->
+<section id="s8">
+  <div class="eyebrow">Deep dive</div>
+  <h2><span class="num">08</span>Fees — the module that sells</h2>
+
+  <p>A principal will tolerate clunky attendance. They will not tolerate not knowing who owes what. Build this one properly and the rest of the product rides along.</p>
+
+  <h4>Structure</h4>
+  <ul>
+    <li><strong>Fee heads</strong> — tuition, admission, annual charges, exam, transport, lab, late fine. Each with a frequency (monthly, annual, one-time) and whether it is concession-eligible.</li>
+    <li><strong>Structure per class</strong>, overridable per student — because negotiated fees are universal in this market and pretending otherwise makes the software useless on day one.</li>
+    <li><strong>Concessions</strong> — sibling discount, staff child, scholarship, hardship. Each with a principal approval record and an expiry.</li>
+  </ul>
+
+  <h4>Cycle</h4>
+  <ol>
+    <li>Monthly invoice generation (batch job, resumable) on a fixed day.</li>
+    <li>Challan PDF with three tear-off copies — bank, school, parent — carrying the school's bank details, the due date and the late-fine rule. Batch print by section, and a per-student copy in the parent portal.</li>
+    <li>Payment recording: cash at the office window, bank deposit slip, JazzCash/Easypaisa reference. Every payment gets a sequential receipt number that cannot skip.</li>
+    <li>Late fine applied automatically after the due date, with a per-school toggle and a waiver action that requires a reason.</li>
+    <li>Defaulter list — by class, by amount, by months overdue. The single most-used screen in the product.</li>
+    <li>Daily collection reconciliation for the accountant: opening, receipts by mode, closing, signed off. Month close locks the period.</li>
+  </ol>
+
+  <div class="note">
+    <span class="t">Messaging reality</span>
+    <p>You cannot email 600 parents from a Gmail account (100/day), and SMS gateways cost money per message. For phase 1, generate <strong>WhatsApp click-to-send links</strong> (<code>wa.me</code> with a pre-filled message) as a batch the office clerk works through — free, and it fits how these schools already communicate. Automated sending needs the WhatsApp Business Cloud API with per-conversation pricing; make that a paid add-on you run through your own account, which conveniently is also a renewal lever.</p>
+  </div>
+</section>
+
+<!-- ============ 09 ============ -->
+<section id="s9">
+  <div class="eyebrow">Deep dive</div>
+  <h2><span class="num">09</span>Discipline points</h2>
+  <p class="lede">You described this as every teacher being able to give plus and minus points. That works — but unbounded, it becomes a weapon within a month and parents start arriving at the office. The design is mostly guardrails.</p>
+
+  <h4>The ledger</h4>
+  <pre><b>DisciplineLedger</b>   <span class="c">append only</span>
+  entry_id · timestamp · student_id · awarded_by(staff_id) · category
+  points(+/−) · reason_text · evidence_file_id · <b>reversal_of</b> · reviewed_by</pre>
+
+  <h4>Guardrails that make it survivable</h4>
+  <ul>
+    <li><strong>Point authority by role.</strong> Subject teacher ±5 per entry, class teacher ±10, coordinator ±20, principal unlimited. A teacher cannot end a child's term in one tap.</li>
+    <li><strong>Daily cap per teacher.</strong> No more than, say, 15 negative points issued per teacher per day across all students — a teacher having a bad day cannot carpet-bomb a class.</li>
+    <li><strong>Mandatory reason above a threshold.</strong> Anything beyond −3 requires typed text, not just a category chip.</li>
+    <li><strong>Automatic parent notification</strong> on any negative entry past a configured threshold, so nothing accumulates invisibly and lands as a shock on the report card.</li>
+    <li><strong>Reversal, never deletion.</strong> A wrong entry is corrected by appending a reversal that names the reviewer. The original stays visible to admin.</li>
+    <li><strong>Appeal flow.</strong> Parent taps "request review" → coordinator sees a queue → resolves with a note. This one feature converts the module from a conflict generator into a trust generator.</li>
+  </ul>
+
+  <h4>Making it two taps on a phone</h4>
+  <p>Teachers will not use this if it takes thirty seconds. The teacher app flow: pick section → tap student photo → tap a preset chip (<em>Homework not done −2</em>, <em>Helped a classmate +3</em>, <em>Late −1</em>, <em>Excellent participation +5</em>). Presets and their values are configured per school. Free-text is the exception path, not the default.</p>
+
+  <h4>What the points feed</h4>
+  <ul>
+    <li>A <strong>conduct grade</strong> on the report card, derived from net points over the term against configurable bands — this is what makes teachers bother to enter data, because it visibly matters.</li>
+    <li><strong>House points</strong> totals, which schools love for assembly announcements.</li>
+    <li>A coordinator dashboard of students trending sharply negative — the actual pastoral-care value, and worth surfacing prominently.</li>
+  </ul>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="eyebrow">Deep dive</div>
+  <h2><span class="num">10</span>Attendance and timetable</h2>
+
+  <h3>Attendance</h3>
+  <p>Store it <strong>wide</strong>: one row per student per month, 31 day-columns holding single-character codes (<code>P A L E H</code> — present, absent, leave, excused, holiday). That is 600 rows per month instead of 13,000, roughly 30× cheaper to read and write, and it prints as a monthly register that looks exactly like the paper one the school already uses.</p>
+  <p>The teacher screen must mark a full section in under 30 seconds: default everyone present, tap only the absentees, submit. One write. Period-wise attendance for secondary classes is a phase-3 option — most schools at this tier will not sustain it.</p>
+  <p>Derived automatically: monthly percentage per student, consecutive-absence alerts to the parent, the monthly register PDF, and the attendance figure that appears on the report card.</p>
+
+  <h3>Timetable</h3>
+  <div class="decision">
+    <div class="tag">Decision 05</div>
+    <h4>Automatic timetable generation, or assisted manual?</h4>
+    <ul class="opts">
+      <li><span class="mark">no</span>Auto-generate from constraints. It is a genuinely hard scheduling problem, it will not finish inside 6 minutes for a 25-section school, and the output always violates some unstated rule the coordinator holds in their head.</li>
+      <li class="picked"><span class="mark">yes</span><strong>A grid editor with live clash detection.</strong> The coordinator drags periods; the system refuses double-booked teachers and rooms, tracks per-teacher load against their maximum, and flags subjects short of their weekly quota.</li>
+    </ul>
+    <p><strong>Why:</strong> the coordinator already knows the timetable they want — they just cannot spot conflicts across 25 sections on paper. Validation delivers 90% of the value for 10% of the work, and it ships this quarter rather than next year.</p>
+  </div>
+
+  <p>The feature that actually wins coordinators over is <strong>substitution management</strong>: a teacher is absent, the system lists free teachers for each of that teacher's periods, the coordinator assigns cover in a minute, and a daily cover list prints for the staff room. This is a daily pain and nobody at this tier has it solved.</p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="eyebrow">Deep dive</div>
+  <h2><span class="num">11</span>Year rollover</h2>
+  <p class="lede">The module everybody forgets and everybody needs once a year. Done wrong, it destroys the school's history — which is the one unrecoverable failure in this product.</p>
+
+  <p>What it has to do, as an atomic, reviewable, resumable operation:</p>
+  <ol>
+    <li>Close the outgoing year: lock exams, finalise results, mark promoted / detained / left per student.</li>
+    <li>Create the new year's spreadsheets from templates and register their IDs in Config.</li>
+    <li>Create new <code>Enrollment</code> rows: promoted students into the next class, detained students repeating, leavers excluded.</li>
+    <li>Re-section and re-assign roll numbers — with a manual review screen, because principals always want to rebalance sections by hand.</li>
+    <li>Carry forward outstanding fee balances as opening dues, with a report of who and how much.</li>
+    <li>Roll over staff assignments and the timetable as a starting draft.</li>
+    <li>Archive the previous year's folder as read-only and leave it fully browsable.</li>
+  </ol>
+
+  <p>Design rules: <strong>preview before commit</strong> (show exactly what will happen to how many students, and let it be cancelled), full snapshot backup immediately before, and idempotency so a half-finished rollover can be safely re-run. Then walk the first ten schools through it personally — it is the highest-risk operation in the calendar and the fastest way to lose a customer.</p>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <div class="eyebrow">Interfaces</div>
+  <h2><span class="num">12</span>The seven interfaces</h2>
+  <p class="lede">One codebase, one deployment, seven front doors. The web app inspects the session and serves a different shell — the same URL for everyone, which keeps support simple.</p>
+
+  <div class="portals">
+    <div class="portal">
+      <h4>Parent portal</h4>
+      <div class="dev">Mobile · 2G · phone + PIN</div>
+      <p>Five cards and nothing else: attendance this month, latest result, fee status with a challan download, notices, today's diary.</p>
+      <p class="job"><span>One job:</span> answer "is my child fine and do I owe money" in under ten seconds on a cheap Android over a weak connection.</p>
+    </div>
+    <div class="portal">
+      <h4>Teacher app</h4>
+      <div class="dev">Mobile-first</div>
+      <p>Today's periods on top. Mark attendance, enter marks, award conduct points, post homework. Only their own sections and subjects exist.</p>
+      <p class="job"><span>One job:</span> attendance for a whole section in under 30 seconds, standing in the classroom.</p>
+    </div>
+    <div class="portal">
+      <h4>Office / admin console</h4>
+      <div class="dev">Desktop · dense</div>
+      <p>Admissions, student search, document uploads, transfers, certificate issue, notices. Dense tables, keyboard-friendly, bulk actions everywhere.</p>
+      <p class="job"><span>One job:</span> replace the filing cabinet without slowing the clerk down.</p>
+    </div>
+    <div class="portal">
+      <h4>Accountant desk</h4>
+      <div class="dev">Desktop</div>
+      <p>Fee collection window, receipt printing, defaulter list, concession requests, daily reconciliation, month close.</p>
+      <p class="job"><span>One job:</span> take money at a counter with a queue of parents waiting.</p>
+    </div>
+    <div class="portal">
+      <h4>Coordinator</h4>
+      <div class="dev">Tablet / desktop · wing-scoped</div>
+      <p>Timetable grid, daily cover list, marks verification queue, discipline review queue, attendance exceptions for their wing.</p>
+      <p class="job"><span>One job:</span> keep today running when two teachers call in sick.</p>
+    </div>
+    <div class="portal">
+      <h4>Principal dashboard</h4>
+      <div class="dev">Desktop · read-mostly</div>
+      <p>Collection rate against target, attendance trend, subject-wise performance, teachers with pending marks, approval queue. Every figure drills through to the rows behind it.</p>
+      <p class="job"><span>One job:</span> five numbers that say whether the school is healthy this week.</p>
+    </div>
+    <div class="portal">
+      <h4>Student portal</h4>
+      <div class="dev">Mobile · optional, senior classes</div>
+      <p>Timetable, homework, own results, conduct total. No fees, no discipline reasons, no staff notes.</p>
+      <p class="job"><span>One job:</span> "what's my homework" — and little else. Ship last.</p>
+    </div>
+    <div class="portal">
+      <h4>Vendor console <span style="color:var(--muted);font-weight:400">(yours)</span></h4>
+      <div class="dev">Separate app · your account</div>
+      <p>Fleet health from the heartbeats: version per school, last successful nightly job, error counts, licence expiry, student counts for billing.</p>
+      <p class="job"><span>One job:</span> know a school is broken before its principal phones you.</p>
+    </div>
+  </div>
+
+  <p>Build the shell once — header, role-aware nav, session handling, error toasts — and let each module contribute screens into it. Keep the front end plain HTML, CSS and vanilla JavaScript talking to the server over <code>google.script.run</code>. A framework bundle is dead weight on a 3G connection in a market where phone hardware is the constraint, and it buys you nothing this product needs.</p>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <div class="eyebrow">Patterns</div>
+  <h2><span class="num">13</span>Survival patterns</h2>
+  <p class="lede">Seven techniques that Apps Script projects either adopt or die of. Build each once, centrally, before the modules.</p>
+
+  <div class="kv">
+    <div><dt>Batch every sheet operation</dt><dd>One <code>getValues()</code> for the range, work in memory, one <code>setValues()</code> back. A loop of per-cell reads is 100× slower and is the single most common reason an Apps Script app feels broken.</dd></div>
+    <div><dt>Lock every write</dt><dd><code>LockService.getScriptLock()</code> around the read-modify-write, held for as short a window as possible, with a bounded wait and a clear error if it times out. Sheets has no transactions; this is all you get. Append-only ledgers sidestep most of the need.</dd></div>
+    <div><dt>Cache hot reads</dt><dd>Student index, timetable, permission matrix, fee structure — all read constantly, changed rarely. Keep them in <code>CacheService</code> keyed with a version counter from <code>PropertiesService</code>; any write bumps the counter and every cache entry invalidates at once. Watch the per-key size cap and chunk anything large.</dd></div>
+    <div><dt>One generic job runner</dt><dd>A Jobs sheet holding <code>job_id, type, params, cursor, total, status, started_by</code>, plus the checkpoint-and-resume trigger loop from §7. Report cards, invoicing, rollover and bulk import all become job types rather than four separate hand-rolled batch systems.</dd></div>
+    <div><dt>Audit everything that mutates</dt><dd>Append-only: timestamp, user, role, action, entity, before, after. Non-negotiable for marks and money. The day a principal accuses a clerk of changing a fee record, this sheet is the entire value of your software.</dd></div>
+    <div><dt>Nightly backup</dt><dd>A trigger copies every data spreadsheet into <code>_Backups/YYYY-MM-DD/</code> with 30-day rolling retention, plus a monthly CSV export. Drive's own version history is a second net. A school that loses a term of attendance will not renew, and will tell every other principal in the neighbourhood.</dd></div>
+    <div><dt>Keep an exit ramp</dt><dd>All <code>SpreadsheetApp</code> calls live in a repository layer (<code>repo_students.gs</code>, <code>repo_fees.gs</code>). Services never touch a spreadsheet directly. If you outgrow Sheets at school #400, you swap the repositories for a real database and the business logic survives. This costs almost nothing now and is the difference between a pivot and a rewrite.</dd></div>
+  </div>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <div class="eyebrow">Workflow</div>
+  <h2><span class="num">14</span>Repo shape and dev workflow</h2>
+
+  <pre><b>/src</b>
+  00_bootstrap.gs        <span class="c">globals, config load, schema validation</span>
+  auth.gs                <span class="c">login, PIN hashing, session tokens</span>
+  guard.gs               <span class="c">the permission + scope gate</span>
+  jobs.gs                <span class="c">generic resumable job runner</span>
+  cache.gs  lock.gs  audit.gs  migrate.gs
+  <b>repo/</b>                  <span class="c">the ONLY files that touch SpreadsheetApp</span>
+    repo_students.gs  repo_fees.gs  repo_marks.gs  repo_attendance.gs
+  <b>svc/</b>                   <span class="c">business logic, pure-ish, session-aware</span>
+    svc_admissions.gs  svc_fees.gs  svc_exams.gs  svc_discipline.gs
+  api.gs                 <span class="c">every client-callable entry point; each starts with guard()</span>
+  <b>ui/</b>
+    shell.html  parent.html  teacher.html  office.html  css.html  js.html
+  appsscript.json
+<b>/templates</b>              <span class="c">Docs template IDs + the HTML report card layouts</span>
+<b>/tools</b>
+  provision.js           <span class="c">node + clasp: stand up a new school</span>
+  rollout.js             <span class="c">node + clasp: push a release to a ring</span>
+<b>/fleet</b>
+  registry.json          <span class="c">schoolId → scriptId, deploymentId, version, licence</span></pre>
+
+  <p>Two Apps Script quirks worth designing around: all <code>.gs</code> files share one global scope with no module system, so wrap each unit in a namespace object (<code>var Fees = (function(){ … })();</code>) to avoid collisions; and file load order is alphabetical, which is why bootstrap carries a numeric prefix.</p>
+
+  <p>Working setup, which is what we have already stood up in this session: clasp is installed and authenticated against your account, so the loop is <code>edit → clasp push → test in the dev school → tag → rollout.js ring1</code>. Keep <code>.clasprc.json</code> out of git — it is a live credential.</p>
+
+  <div class="note">
+    <span class="t">Testing</span>
+    <p>Apps Script has no real test framework. Build a <code>test.gs</code> with plain assertion functions runnable from the editor against a disposable school, and a <code>seedDemoSchool()</code> that generates 600 fake students with Pakistani names, a full term of attendance and a term of marks. You will run that seeder hundreds of times, and it doubles as your sales demo.</p>
+  </div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <div class="eyebrow">Risk</div>
+  <h2><span class="num">15</span>What kills this</h2>
+
+  <div class="tw">
+  <table>
+    <tr><th>Failure</th><th>Likelihood</th><th>Defence</th></tr>
+    <tr><td>Result-day concurrency</td><td>High</td><td>The 30-simultaneous-execution ceiling meets 400 parents at once. Pre-generate PDFs, cache aggressively, publish results in staggered batches by class.</td></tr>
+    <tr><td>Clerk edits a sheet and breaks it</td><td>High</td><td>Schema validation on load, protected header rows, no formulas, nightly backups, an "undo from backup" tool in the office console.</td></tr>
+    <tr><td>Import from the school's old Excel</td><td>High</td><td>Every deployment stalls here. The mapping wizard is a phase-1 module, not a favour you do by hand.</td></tr>
+    <tr><td>Authorisation screen scares the principal</td><td>Medium</td><td>Guided handover, illustrated one-pager, or do it screen-shared.</td></tr>
+    <tr><td>Version drift across the fleet</td><td>Medium</td><td>Version recorded in Config, reported on heartbeat, rollout only through rings.</td></tr>
+    <tr><td>Year rollover corrupts history</td><td>Medium</td><td>Preview-before-commit, snapshot first, idempotent re-run, hand-hold the first ten schools.</td></tr>
+    <tr><td>Google changes quotas or deprecates something</td><td>Low, severe</td><td>The repository layer is your insurance. Keep it clean from day one.</td></tr>
+    <tr><td>A school leaks its own data via Drive sharing</td><td>Medium</td><td>Never share data files with staff; audit sharing on the nightly job and alert on any external editor added.</td></tr>
+  </table>
+  </div>
+
+  <p>The one that should worry you most is not technical. It is that a school pays, uses it for a term, and then the office quietly drifts back to the paper register because one workflow was slower than what they had. Instrument usage — the heartbeat should report attendance-marking rate and fee entries per week — and treat a school going quiet as a support emergency, not a happy customer.</p>
+</section>
+
+<!-- ============ 16 ============ -->
+<section id="s16">
+  <div class="eyebrow">Open</div>
+  <h2><span class="num">16</span>Decisions I need from you</h2>
+  <p class="lede">Everything above I could settle from the brief. These I cannot, and each one changes what gets built first.</p>
+
+  <ol>
+    <li><strong>Consumer Gmail or Workspace for Education?</strong> If you can get schools onto free Education Fundamentals, quotas stop being an architectural constraint and identity gets much simpler. If not, every design above stays as written. This is the single highest-leverage question.</li>
+    <li><strong>Who owns the account — school or you?</strong> I have recommended the school. If you want a kill-switch badly enough to own it yourself, say so now, because it changes the entire quota and provisioning model.</li>
+    <li><strong>Urdu in the interface, or only on printed output?</strong> Bilingual UI roughly doubles the copywriting and testing surface. My default: English UI, bilingual documents.</li>
+    <li><strong>Which board and grading conventions do your first ten schools follow?</strong> BSEK, Aga Khan Board, or their own internal scheme? Report card format is the thing they will judge you on in the first meeting.</li>
+    <li><strong>What are they paying today,</strong> to a clerk or to existing software? That number sets the price and tells us whether fees or report cards is the sharper wedge.</li>
+    <li><strong>Do you have one friendly school to build against?</strong> Building this against a real school's actual data beats any amount of speculative design — and their existing Excel file will teach us more about the schema than another week of planning.</li>
+  </ol>
+
+  <h3>What I would build first</h3>
+  <p>An eight-week MVP aimed at one real school: student records with the import wizard, fees end to end including printed challans, attendance, exams through to batch-printed report cards, and the parent portal. That is a complete, sellable product. Timetable, discipline and messaging come after the first school is live and paying, and they will be better modules for having watched a real office work.</p>
+</section>
+
+<p class="end">Architecture brief, revision 1 — design only, nothing implemented. Quota figures should be re-verified against Google's current Apps Script documentation before any commitment to a customer.</p>
+
+</main>
+</div>
+</div>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <title>School OS</title>
+  <?!= include('ui_css'); ?>
+</head>
+<body>
+
+<div id="app">
+  <!-- ------------------------------------------------------ login ------- -->
+  <div id="view-login" class="screen">
+    <div class="login-wrap">
+      <div class="login-card">
+        <div class="brand">
+          <div class="crest">AN</div>
+          <div>
+            <h1 id="login-school">School OS</h1>
+            <p id="login-address" class="muted"></p>
+          </div>
+        </div>
+
+        <form id="login-form" autocomplete="off">
+          <label for="loginId">Phone number or staff ID</label>
+          <input id="loginId" name="loginId" type="text" inputmode="tel"
+                 placeholder="03001234567 or principal" required>
+
+          <label for="pin">PIN</label>
+          <input id="pin" name="pin" type="password" inputmode="numeric"
+                 placeholder="••••" required>
+
+          <button type="submit" class="btn primary block" id="login-btn">Sign in</button>
+          <p id="login-error" class="error" hidden></p>
+        </form>
+
+        <details class="demo-logins">
+          <summary>Demo accounts</summary>
+          <table class="mini">
+            <tr><td>Principal</td><td><code>principal</code></td></tr>
+            <tr><td>Office</td><td><code>office</code></td></tr>
+            <tr><td>Accountant</td><td><code>accounts</code></td></tr>
+            <tr><td>Coordinator</td><td><code>coord.primary</code></td></tr>
+            <tr><td>Class teacher</td><td><code>teacher01</code></td></tr>
+            <tr><td>Subject teacher</td><td><code>subject01</code></td></tr>
+            <tr><td>Parent</td><td><span id="demo-parent">a guardian phone number</span></td></tr>
+          </table>
+          <p class="muted small">PIN for every demo account is <code>1234</code>.</p>
+        </details>
+      </div>
+    </div>
+  </div>
+
+  <!-- ------------------------------------------------------- app --------- -->
+  <div id="view-app" class="screen" hidden>
+    <header class="topbar">
+      <div class="topbar-in">
+        <button class="icon-btn" id="nav-toggle" aria-label="Menu">☰</button>
+        <div class="topbar-title">
+          <strong id="bar-school">School OS</strong>
+          <span class="muted small" id="bar-year"></span>
+        </div>
+        <div class="topbar-user">
+          <span id="bar-user"></span>
+          <span class="role-chip" id="bar-role"></span>
+          <button class="btn ghost small" id="logout-btn">Sign out</button>
+        </div>
+      </div>
+      <nav id="tabs" class="tabs"></nav>
+    </header>
+
+    <main id="main">
+      <div id="loading" class="loading" hidden><span class="spinner"></span> Loading…</div>
+      <div id="panel"></div>
+    </main>
+  </div>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<?!= include('ui_js'); ?>
+</body>
+</html>

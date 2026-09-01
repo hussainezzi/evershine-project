@@ -1,0 +1,1028 @@
+<script>
+/* ------------------------------------------------------------------ state */
+var State = {
+  token: null,
+  session: null,
+  config: {},
+  tab: null,
+  cache: {}
+};
+
+function store(key, val) {
+  try {
+    if (val === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, val);
+  } catch (e) { /* private mode — session simply won't persist */ }
+}
+function stored(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+
+/* -------------------------------------------------------------------- rpc */
+function rpc(fnName) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (resolve, reject) {
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (!res) return reject(new Error('No response from server.'));
+        if (res.ok) return resolve(res.data);
+        if (String(res.error).indexOf('AUTH:') === 0) {
+          signOut(String(res.error).replace('AUTH:', '').trim());
+          return reject(new Error(res.error));
+        }
+        reject(new Error(res.error));
+      })
+      .withFailureHandler(function (err) { reject(err); })
+      [fnName].apply(null, args);
+  });
+}
+
+/* ------------------------------------------------------------------- dom */
+function $(id) { return document.getElementById(id); }
+function el(tag, cls, html) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html !== undefined) n.innerHTML = html;
+  return n;
+}
+function esc(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+function money(n) {
+  return 'Rs ' + Number(n || 0).toLocaleString('en-PK');
+}
+function initials(name) {
+  return String(name || '?').trim().split(/\s+/).slice(0, 2)
+    .map(function (w) { return w[0]; }).join('').toUpperCase();
+}
+function toast(msg, bad) {
+  var t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (bad ? ' bad' : '');
+  t.hidden = false;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function () { t.hidden = true; }, 3200);
+}
+function busy(on) { $('loading').hidden = !on; }
+function panel() { return $('panel'); }
+
+function fail(err) {
+  busy(false);
+  var msg = err && err.message ? err.message : String(err);
+  panel().appendChild(el('div', 'error', esc(msg)));
+  toast(msg, true);
+}
+
+/* ------------------------------------------------------------------ boot */
+document.addEventListener('DOMContentLoaded', function () {
+  rpc('api_bootstrap').then(function (info) {
+    if (!info.ready) {
+      $('login-school').textContent = 'Not set up yet';
+      $('login-address').textContent =
+        'Run setupAndSeedDemoSchool() once from the Apps Script editor.';
+      $('login-form').hidden = true;
+      return;
+    }
+    State.config = info;
+    $('login-school').textContent = info.schoolName;
+    $('login-address').textContent = info.schoolAddress;
+    document.title = info.schoolName + ' — School OS';
+
+    var t = stored('sos_token');
+    if (t) {
+      State.token = t;
+      rpc('api_session', t)
+        .then(function (s) { State.session = s; enterApp(); })
+        .catch(function () { store('sos_token', null); });
+    }
+  }).catch(function (e) {
+    $('login-error').hidden = false;
+    $('login-error').textContent = 'Could not reach the server: ' + e.message;
+  });
+
+  $('login-form').addEventListener('submit', onLogin);
+  $('logout-btn').addEventListener('click', function () { signOut(); });
+  $('nav-toggle').addEventListener('click', function () {
+    $('tabs').scrollLeft = 0;
+  });
+});
+
+function onLogin(e) {
+  e.preventDefault();
+  var btn = $('login-btn');
+  var errBox = $('login-error');
+  errBox.hidden = true;
+  btn.disabled = true;
+  btn.textContent = 'Signing in…';
+
+  rpc('api_login', $('loginId').value.trim(), $('pin').value.trim())
+    .then(function (res) {
+      State.token = res.token;
+      State.session = res.session;
+      store('sos_token', res.token);
+      enterApp();
+    })
+    .catch(function (err) {
+      errBox.textContent = err.message;
+      errBox.hidden = false;
+    })
+    .then(function () {
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+    });
+}
+
+function signOut(message) {
+  State.token = null;
+  State.session = null;
+  State.cache = {};
+  store('sos_token', null);
+  $('view-app').hidden = true;
+  $('view-login').hidden = false;
+  $('pin').value = '';
+  if (message) {
+    $('login-error').textContent = message;
+    $('login-error').hidden = false;
+  }
+}
+
+/* ------------------------------------------------------------------ tabs */
+var TABS = {
+  principal:      ['dashboard', 'students', 'attendance', 'results', 'fees', 'conduct'],
+  office_admin:   ['students', 'attendance', 'results', 'notices'],
+  accountant:     ['fees', 'students'],
+  coordinator:    ['attendance', 'results', 'conduct', 'students'],
+  class_teacher:  ['attendance', 'marks', 'conduct', 'students'],
+  subject_teacher:['marks', 'attendance', 'conduct'],
+  parent:         ['home'],
+  student:        ['home']
+};
+
+var TAB_LABEL = {
+  dashboard: 'Dashboard', students: 'Students', attendance: 'Attendance',
+  marks: 'Marks entry', results: 'Results', fees: 'Fees', conduct: 'Conduct',
+  notices: 'Notices', home: 'Home'
+};
+
+var ROLE_LABEL = {
+  principal: 'Principal', office_admin: 'Office', accountant: 'Accounts',
+  coordinator: 'Coordinator', class_teacher: 'Class teacher',
+  subject_teacher: 'Teacher', parent: 'Parent', student: 'Student'
+};
+
+function enterApp() {
+  $('view-login').hidden = true;
+  $('view-app').hidden = false;
+  $('bar-school').textContent = State.config.schoolName || 'School OS';
+  $('bar-year').textContent = State.session.year;
+  $('bar-user').textContent = State.session.name;
+  $('bar-role').textContent = ROLE_LABEL[State.session.role] || State.session.role;
+
+  var tabs = TABS[State.session.role] || ['home'];
+  var nav = $('tabs');
+  nav.innerHTML = '';
+  tabs.forEach(function (t) {
+    var b = el('button', '', TAB_LABEL[t] || t);
+    b.onclick = function () { showTab(t); };
+    b.dataset.tab = t;
+    nav.appendChild(b);
+  });
+  showTab(tabs[0]);
+}
+
+function showTab(tab) {
+  State.tab = tab;
+  Array.prototype.forEach.call($('tabs').children, function (b) {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  panel().innerHTML = '';
+  busy(true);
+  var fn = ({
+    dashboard: viewDashboard, students: viewStudents, attendance: viewAttendance,
+    marks: viewMarks, results: viewResults, fees: viewFees, conduct: viewConduct,
+    notices: viewNotices, home: viewParentHome
+  })[tab];
+  if (fn) fn(); else busy(false);
+}
+
+/* ------------------------------------------------------------- dashboard */
+function viewDashboard() {
+  rpc('api_dashboard', State.token).then(function (d) {
+    busy(false);
+    var p = panel();
+
+    var stats = el('div', 'grid k4');
+    stats.appendChild(statTile('Students', d.students, d.sections + ' sections'));
+    stats.appendChild(statTile('Attendance', d.attendancePercent + '%',
+      d.attendanceMonth || '—', d.attendancePercent >= 90 ? 'good' : 'warn'));
+    stats.appendChild(statTile('Collection', d.collectionRate + '%',
+      money(d.feesCollected) + ' of ' + money(d.feesBilled),
+      d.collectionRate >= 85 ? 'good' : 'warn'));
+    stats.appendChild(statTile('Outstanding', money(d.feesOutstanding),
+      d.defaulters + ' families', d.feesOutstanding > 0 ? 'risk' : 'good'));
+    p.appendChild(stats);
+
+    var more = el('div', 'grid k3');
+    more.appendChild(statTile('Teaching staff', d.staff, 'active'));
+    more.appendChild(statTile('Latest exam', d.latestExam, 'published'));
+    more.appendChild(statTile('Academic year', State.session.year, 'April – March'));
+    p.appendChild(more);
+
+    // Attendance watchlist and defaulters, side by side.
+    var row = el('div', 'grid k2');
+    var left = card('Chronic absentees', '<div class="empty">Loading…</div>');
+    var right = card('Largest outstanding balances', '<div class="empty">Loading…</div>');
+    row.appendChild(left.card); row.appendChild(right.card);
+    p.appendChild(row);
+
+    rpc('api_attendanceSummary', State.token, null).then(function (a) {
+      if (!a.chronic.length) {
+        left.body.innerHTML = '<div class="empty">Nobody absent 3 days running.</div>';
+        return;
+      }
+      left.body.className = 'card-body flush';
+      left.body.innerHTML = tableHtml(
+        ['Student', 'Class', 'Run', '%'],
+        a.chronic.slice(0, 8).map(function (r) {
+          return [esc(r.name), esc(r.sectionKey),
+                  '<span class="num">' + r.consecutive + '</span>',
+                  '<span class="num">' + r.percent + '%</span>'];
+        }));
+    }).catch(function () { left.body.innerHTML = '<div class="empty">—</div>'; });
+
+    rpc('api_feeSummary', State.token).then(function (f) {
+      right.body.className = 'card-body flush';
+      right.body.innerHTML = tableHtml(
+        ['Student', 'Class', 'Months', 'Balance'],
+        f.defaulters.slice(0, 8).map(function (r) {
+          return [esc(r.name), esc(r.sectionKey),
+                  '<span class="num">' + r.monthsOverdue + '</span>',
+                  '<span class="num">' + money(r.balance) + '</span>'];
+        }));
+    }).catch(function () { right.body.innerHTML = '<div class="empty">—</div>'; });
+
+  }).catch(fail);
+}
+
+function statTile(label, value, sub, tone) {
+  var d = el('div', 'stat' + (tone ? ' ' + tone : ''));
+  d.innerHTML = '<div class="label">' + esc(label) + '</div>' +
+                '<div class="value">' + esc(value) + '</div>' +
+                (sub ? '<div class="sub">' + esc(sub) + '</div>' : '');
+  return d;
+}
+
+function card(title, bodyHtml, headExtra) {
+  var c = el('div', 'card');
+  var head = el('div', 'card-head');
+  head.appendChild(el('h3', '', esc(title)));
+  if (headExtra) head.appendChild(headExtra);
+  var body = el('div', 'card-body', bodyHtml || '');
+  c.appendChild(head); c.appendChild(body);
+  return { card: c, body: body, head: head };
+}
+
+function tableHtml(headers, rows) {
+  if (!rows.length) return '<div class="empty">Nothing to show.</div>';
+  var h = '<div class="table-wrap"><table class="data"><thead><tr>';
+  headers.forEach(function (x) { h += '<th>' + esc(x) + '</th>'; });
+  h += '</tr></thead><tbody>';
+  rows.forEach(function (r) {
+    h += '<tr>';
+    r.forEach(function (c) { h += '<td>' + c + '</td>'; });
+    h += '</tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+
+/* -------------------------------------------------------------- students */
+function viewStudents() {
+  var p = panel();
+  var box = card('Students', '');
+  var search = el('input');
+  search.type = 'search';
+  search.placeholder = 'Search by name, GR number or father\'s name…';
+  box.body.appendChild(search);
+  var results = el('div');
+  results.style.marginTop = '12px';
+  box.body.appendChild(results);
+  p.appendChild(box.card);
+
+  var detail = el('div');
+  p.appendChild(detail);
+
+  function run(q) {
+    rpc('api_searchStudents', State.token, q).then(function (rows) {
+      busy(false);
+      results.innerHTML = tableHtml(
+        ['GR No.', 'Name', 'Father', 'Class', 'Roll'],
+        rows.map(function (r) {
+          return ['<code>' + esc(r.grNo) + '</code>',
+                  '<a href="#" data-sid="' + esc(r.studentId) + '">' + esc(r.name) + '</a>',
+                  esc(r.fatherName), esc(r.sectionKey),
+                  '<span class="num">' + esc(r.rollNo) + '</span>'];
+        }));
+      results.querySelectorAll('a[data-sid]').forEach(function (a) {
+        a.onclick = function (ev) {
+          ev.preventDefault();
+          openStudent(a.dataset.sid, detail);
+        };
+      });
+    }).catch(fail);
+  }
+
+  var timer;
+  search.oninput = function () {
+    clearTimeout(timer);
+    timer = setTimeout(function () { run(search.value); }, 280);
+  };
+  run('');
+}
+
+function openStudent(studentId, host) {
+  host.innerHTML = '';
+  Promise.all([
+    rpc('api_student', State.token, studentId),
+    rpc('api_disciplineHistory', State.token, studentId).catch(function () { return null; }),
+    rpc('api_studentLedger', State.token, studentId).catch(function () { return null; })
+  ]).then(function (r) {
+    var s = r[0], disc = r[1], fees = r[2];
+    var c = el('div', 'card');
+
+    var head = el('div', 'child-head');
+    head.innerHTML =
+      '<div class="avatar">' + esc(initials(s.name_en)) + '</div>' +
+      '<div class="who"><strong>' + esc(s.name_en) + '</strong>' +
+      '<span>' + esc(s.sectionKey) + ' · Roll ' + esc(s.rollNo) +
+      ' · GR ' + esc(s.gr_no) + '</span></div>';
+    c.appendChild(head);
+
+    var kv = el('div', 'kv-list');
+    function row(k, v) {
+      if (v === undefined || v === '' || v === null) return;
+      kv.appendChild(el('div', 'kv-item',
+        '<span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + '</span>'));
+    }
+    row('Father', s.father_name);
+    row('Date of birth', s.dob);
+    row('Gender', s.gender === 'M' ? 'Male' : 'Female');
+    row('Admitted', s.admission_date);
+    row('Area', s.area);
+    row('Transport', s.transport_route || 'Own arrangement');
+    row('B-Form', s.b_form_no);
+    if (s.medical_notes) row('Medical', s.medical_notes);
+    if (disc) row('Conduct', disc.conduct.points + ' pts · ' + disc.conduct.grade +
+                             ' (' + disc.conduct.remark + ')');
+    if (fees) row('Fee balance', money(fees.outstanding));
+    if (s.guardians && s.guardians.length) {
+      row('Guardian', s.guardians[0].name + ' · ' + s.guardians[0].phone_primary);
+    }
+    c.appendChild(kv);
+    host.appendChild(c);
+
+    if (disc && disc.history.length) {
+      var d = card('Conduct history', tableHtml(
+        ['When', 'Entry', 'Points', 'By'],
+        disc.history.slice(0, 12).map(function (h) {
+          return [esc(String(h.ts).slice(0, 10)), esc(h.reason),
+            '<span class="num ' + (h.points < 0 ? 'pill bad' : 'pill ok') + '">' +
+              (h.points > 0 ? '+' : '') + h.points + '</span>',
+            esc(h.by)];
+        })));
+      host.appendChild(d.card);
+    }
+    host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }).catch(fail);
+}
+
+/* ------------------------------------------------------------ attendance */
+function viewAttendance() {
+  rpc('api_sections', State.token).then(function (sections) {
+    busy(false);
+    if (!sections.length) {
+      panel().innerHTML = '<div class="empty">No sections are assigned to your account.</div>';
+      return;
+    }
+    var p = panel();
+
+    var controls = el('div', 'controls');
+    var secSel = selectEl(sections.map(function (s) {
+      return { value: s.key, label: s.className + ' — ' + s.section };
+    }));
+    var dateInput = el('input');
+    dateInput.type = 'date';
+    dateInput.value = todayStr();
+    controls.appendChild(labelled('Section', secSel));
+    controls.appendChild(labelled('Date', dateInput));
+
+    var box = card('Mark attendance', '');
+    box.head.appendChild(controls);
+    box.body.className = 'card-body flush';
+    p.appendChild(box.card);
+
+    function load() {
+      box.body.innerHTML = '<div class="empty">Loading…</div>';
+      rpc('api_attendanceDay', State.token, secSel.value, dateInput.value)
+        .then(function (d) { renderAttendance(box, d); })
+        .catch(function (e) {
+          box.body.innerHTML = '<div class="error">' + esc(e.message) + '</div>';
+        });
+    }
+    secSel.onchange = load;
+    dateInput.onchange = load;
+    load();
+  }).catch(fail);
+}
+
+function renderAttendance(box, data) {
+  box.body.innerHTML = '';
+  var marks = {};
+  data.students.forEach(function (s) { marks[s.studentId] = s.code || 'P'; });
+
+  var list = el('div');
+  data.students.forEach(function (s) {
+    var row = el('div', 'att-row');
+    row.innerHTML = '<span class="att-roll">' + esc(s.rollNo) + '</span>' +
+                    '<span class="att-name">' + esc(s.name) + '</span>';
+    var codes = el('div', 'codes');
+    ['P', 'A', 'L'].forEach(function (code) {
+      var b = el('button', 'code-btn', code);
+      b.dataset.code = code;
+      b.type = 'button';
+      if (marks[s.studentId] === code) b.classList.add('on');
+      b.onclick = function () {
+        marks[s.studentId] = code;
+        Array.prototype.forEach.call(codes.children, function (x) {
+          x.classList.toggle('on', x.dataset.code === code);
+        });
+      };
+      codes.appendChild(b);
+    });
+    row.appendChild(codes);
+    list.appendChild(row);
+  });
+  box.body.appendChild(list);
+
+  var bar = el('div', 'sticky-save');
+  var count = el('span', 'muted small');
+  function updateCount() {
+    var a = 0, l = 0;
+    Object.keys(marks).forEach(function (k) {
+      if (marks[k] === 'A') a++; else if (marks[k] === 'L') l++;
+    });
+    count.textContent = data.students.length + ' students · ' + a + ' absent · ' + l + ' on leave';
+  }
+  updateCount();
+  list.addEventListener('click', updateCount);
+
+  var save = el('button', 'btn primary', 'Save attendance');
+  save.onclick = function () {
+    save.disabled = true;
+    save.textContent = 'Saving…';
+    rpc('api_saveAttendance', State.token, data.sectionKey, data.date, marks)
+      .then(function (r) { toast('Saved ' + r.saved + ' students for ' + r.date); })
+      .catch(function (e) { toast(e.message, true); })
+      .then(function () { save.disabled = false; save.textContent = 'Save attendance'; });
+  };
+  bar.appendChild(count);
+  bar.appendChild(save);
+  box.body.appendChild(bar);
+}
+
+/* ----------------------------------------------------------- marks entry */
+function viewMarks() {
+  Promise.all([
+    rpc('api_exams', State.token),
+    rpc('api_mySubjects', State.token)
+  ]).then(function (r) {
+    busy(false);
+    var exams = r[0].exams, mine = r[1];
+    if (!mine.length) {
+      panel().innerHTML = '<div class="empty">No subjects are assigned to your account.</div>';
+      return;
+    }
+    var p = panel();
+
+    var examSel = selectEl(exams.map(function (e) {
+      return { value: e.exam_id, label: e.exam_name };
+    }));
+    var pairSel = selectEl(mine.map(function (m) {
+      return { value: m.sectionKey + '|' + m.subjectId,
+               label: m.sectionKey + ' — ' + m.subjectName };
+    }));
+
+    var controls = el('div', 'controls');
+    controls.appendChild(labelled('Exam', examSel));
+    controls.appendChild(labelled('Class & subject', pairSel));
+
+    var box = card('Enter marks', '');
+    box.head.appendChild(controls);
+    box.body.className = 'card-body flush';
+    p.appendChild(box.card);
+
+    function load() {
+      var parts = pairSel.value.split('|');
+      box.body.innerHTML = '<div class="empty">Loading…</div>';
+      rpc('api_marksGrid', State.token, examSel.value, parts[0], parts[1])
+        .then(function (g) { renderMarks(box, g); })
+        .catch(function (e) {
+          box.body.innerHTML = '<div class="error">' + esc(e.message) + '</div>';
+        });
+    }
+    examSel.onchange = load;
+    pairSel.onchange = load;
+    load();
+  }).catch(fail);
+}
+
+function renderMarks(box, grid) {
+  box.body.innerHTML = '';
+  if (grid.locked) {
+    box.body.appendChild(el('div', 'error',
+      'These marks are locked after verification. Only the principal can change them.'));
+  }
+
+  var inputs = {};
+  grid.students.forEach(function (s) {
+    var row = el('div', 'mark-row');
+    row.innerHTML = '<span class="att-roll">' + esc(s.rollNo) + '</span>' +
+                    '<span class="att-name">' + esc(s.name) + '</span>';
+
+    var inp = el('input');
+    inp.type = 'number';
+    inp.min = 0; inp.max = grid.maxMarks; inp.step = 1;
+    inp.value = s.marks === '' ? '' : s.marks;
+    inp.placeholder = '/' + grid.maxMarks;
+    inp.disabled = grid.locked || s.absent;
+
+    var absWrap = el('label', 'abs');
+    var abs = el('input');
+    abs.type = 'checkbox';
+    abs.checked = !!s.absent;
+    abs.disabled = grid.locked;
+    abs.onchange = function () {
+      inp.disabled = grid.locked || abs.checked;
+      if (abs.checked) inp.value = '';
+    };
+    absWrap.appendChild(abs);
+    absWrap.appendChild(document.createTextNode('Absent'));
+
+    row.appendChild(inp);
+    row.appendChild(absWrap);
+    box.body.appendChild(row);
+    inputs[s.studentId] = { marks: inp, absent: abs, rollNo: s.rollNo };
+  });
+
+  var bar = el('div', 'sticky-save');
+  bar.appendChild(el('span', 'muted small',
+    grid.students.length + ' students · out of ' + grid.maxMarks +
+    ' · pass mark ' + grid.passingMarks));
+
+  var save = el('button', 'btn primary', 'Save marks');
+  save.disabled = grid.locked;
+  save.onclick = function () {
+    var entries = Object.keys(inputs).map(function (sid) {
+      return {
+        studentId: sid,
+        marks: inputs[sid].marks.value === '' ? '' : Number(inputs[sid].marks.value),
+        absent: inputs[sid].absent.checked,
+        rollNo: inputs[sid].rollNo
+      };
+    });
+    save.disabled = true;
+    save.textContent = 'Saving…';
+    var parts = grid.sectionKey;
+    rpc('api_saveMarks', State.token, grid.examId, parts, grid.subjectId, entries)
+      .then(function (r) {
+        toast('Saved — ' + (r.updated + r.inserted) + ' entries');
+      })
+      .catch(function (e) { toast(e.message, true); })
+      .then(function () { save.disabled = false; save.textContent = 'Save marks'; });
+  };
+  bar.appendChild(save);
+  box.body.appendChild(bar);
+}
+
+/* --------------------------------------------------------------- results */
+function viewResults() {
+  Promise.all([
+    rpc('api_exams', State.token),
+    rpc('api_sections', State.token)
+  ]).then(function (r) {
+    busy(false);
+    var exams = r[0].exams, sections = r[1];
+    var p = panel();
+
+    var examSel = selectEl(exams.map(function (e) {
+      return { value: e.exam_id, label: e.exam_name + (String(e.published) === 'yes' ? '' : ' (draft)') };
+    }));
+    var secSel = selectEl(sections.map(function (s) {
+      return { value: s.key, label: s.className + ' — ' + s.section };
+    }));
+
+    var controls = el('div', 'controls');
+    controls.appendChild(labelled('Exam', examSel));
+    controls.appendChild(labelled('Section', secSel));
+
+    var box = card('Result sheet', '');
+    box.head.appendChild(controls);
+    box.body.className = 'card-body flush';
+    p.appendChild(box.card);
+
+    function load() {
+      box.body.innerHTML = '<div class="empty">Loading…</div>';
+      rpc('api_sectionResult', State.token, examSel.value, secSel.value)
+        .then(function (res) {
+          if (!res.stats.counted) {
+            box.body.innerHTML = '<div class="empty">No marks entered for this section yet.</div>';
+            return;
+          }
+          var stats = el('div', 'card-body');
+          var g = el('div', 'grid k4');
+          g.appendChild(statTile('Class average', res.stats.average + '%'));
+          g.appendChild(statTile('Highest', res.stats.highest + '%', '', 'good'));
+          g.appendChild(statTile('Passed', res.stats.passed, 'of ' + res.stats.counted));
+          g.appendChild(statTile('Failed', res.stats.failed, '',
+            res.stats.failed ? 'risk' : 'good'));
+          stats.appendChild(g);
+
+          var rows = res.students.filter(function (s) { return s.entered; })
+            .sort(function (a, b) { return a.position - b.position; })
+            .map(function (s) {
+              return [
+                '<span class="num">' + s.position + '</span>',
+                '<span class="num">' + s.rollNo + '</span>',
+                esc(s.name),
+                '<span class="num">' + s.obtained + '/' + s.total + '</span>',
+                '<span class="num">' + s.percent + '%</span>',
+                '<span class="pill ' + (s.grade === 'F' ? 'bad' : 'ok') + '">' + s.grade + '</span>',
+                '<span class="pill ' + (s.status === 'Pass' ? 'ok' : 'bad') + '">' + s.status + '</span>'
+              ];
+            });
+          box.body.innerHTML = '';
+          box.body.appendChild(stats);
+          box.body.insertAdjacentHTML('beforeend', tableHtml(
+            ['Pos', 'Roll', 'Name', 'Marks', '%', 'Grade', 'Result'], rows));
+        })
+        .catch(function (e) {
+          box.body.innerHTML = '<div class="error">' + esc(e.message) + '</div>';
+        });
+    }
+    examSel.onchange = load;
+    secSel.onchange = load;
+    load();
+  }).catch(fail);
+}
+
+/* ------------------------------------------------------------------ fees */
+function viewFees() {
+  rpc('api_feeSummary', State.token).then(function (f) {
+    busy(false);
+    var p = panel();
+
+    var g = el('div', 'grid k4');
+    g.appendChild(statTile('Billed', money(f.summary.billed), 'year to date'));
+    g.appendChild(statTile('Collected', money(f.summary.collected),
+      f.summary.rate + '% of billed', 'good'));
+    g.appendChild(statTile('Outstanding', money(f.summary.outstanding),
+      f.summary.defaulters + ' families', 'risk'));
+    g.appendChild(statTile('Today', money(f.dayBook.total),
+      f.dayBook.count + ' receipts'));
+    p.appendChild(g);
+
+    var box = card('Defaulters', '');
+    box.body.className = 'card-body flush';
+    box.body.innerHTML = tableHtml(
+      ['Student', 'Class', 'Guardian', 'Phone', 'Months', 'Balance', ''],
+      f.defaulters.map(function (r) {
+        return [
+          esc(r.name), esc(r.sectionKey), esc(r.fatherName),
+          '<a href="https://wa.me/92' + esc(String(r.phone).replace(/^0/, '')) +
+            '" target="_blank" rel="noopener">' + esc(r.phone) + '</a>',
+          '<span class="num">' + r.monthsOverdue + '</span>',
+          '<span class="num">' + money(r.balance) + '</span>',
+          '<button class="btn small" data-collect="' + esc(r.studentId) + '">Collect</button>'
+        ];
+      }));
+    p.appendChild(box.card);
+
+    var host = el('div');
+    p.appendChild(host);
+
+    box.body.querySelectorAll('button[data-collect]').forEach(function (b) {
+      b.onclick = function () { openCollection(b.dataset.collect, host); };
+    });
+  }).catch(fail);
+}
+
+function openCollection(studentId, host) {
+  host.innerHTML = '';
+  Promise.all([
+    rpc('api_student', State.token, studentId),
+    rpc('api_openInvoices', State.token, studentId)
+  ]).then(function (r) {
+    var s = r[0], invoices = r[1];
+    var box = card('Collect fee — ' + s.name_en, '');
+
+    if (!invoices.length) {
+      box.body.innerHTML = '<div class="empty">Nothing outstanding.</div>';
+      host.appendChild(box.card);
+      return;
+    }
+
+    var invSel = selectEl(invoices.map(function (i) {
+      return { value: i.invoiceId, label: i.month + ' — ' + money(i.balance) + ' due' };
+    }));
+    var amount = el('input');
+    amount.type = 'number';
+    amount.value = invoices[0].balance;
+    var modeSel = selectEl([
+      { value: 'cash', label: 'Cash' }, { value: 'bank', label: 'Bank deposit' },
+      { value: 'jazzcash', label: 'JazzCash' }, { value: 'easypaisa', label: 'Easypaisa' }
+    ]);
+    var ref = el('input');
+    ref.placeholder = 'Reference / slip number (optional)';
+
+    invSel.onchange = function () {
+      var chosen = invoices.filter(function (i) { return i.invoiceId === invSel.value; })[0];
+      if (chosen) amount.value = chosen.balance;
+    };
+
+    var controls = el('div', 'controls');
+    controls.appendChild(labelled('Invoice', invSel));
+    controls.appendChild(labelled('Amount', amount));
+    controls.appendChild(labelled('Mode', modeSel));
+    controls.appendChild(labelled('Reference', ref));
+    box.body.appendChild(controls);
+
+    var save = el('button', 'btn primary', 'Record payment');
+    save.style.marginTop = '14px';
+    save.onclick = function () {
+      save.disabled = true;
+      rpc('api_recordPayment', State.token, {
+        invoiceId: invSel.value,
+        amount: Number(amount.value),
+        mode: modeSel.value,
+        referenceNo: ref.value
+      }).then(function (res) {
+        toast('Receipt ' + res.receiptNo + ' — balance ' + money(res.balance));
+        showTab('fees');
+      }).catch(function (e) {
+        toast(e.message, true);
+        save.disabled = false;
+      });
+    };
+    box.body.appendChild(save);
+    host.appendChild(box.card);
+    host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }).catch(fail);
+}
+
+/* --------------------------------------------------------------- conduct */
+function viewConduct() {
+  Promise.all([
+    rpc('api_sections', State.token).catch(function () { return []; }),
+    rpc('api_disciplineCategories', State.token).catch(function () { return null; }),
+    rpc('api_disciplineWatchlist', State.token).catch(function () { return null; })
+  ]).then(function (r) {
+    busy(false);
+    var sections = r[0], cats = r[1], watch = r[2];
+    var p = panel();
+
+    if (cats && sections.length) {
+      var box = card('Award conduct points', '');
+      var secSel = selectEl(sections.map(function (s) {
+        return { value: s.key, label: s.className + ' — ' + s.section };
+      }));
+      var studentSel = selectEl([]);
+      var catSel = selectEl(cats.categories.map(function (c) {
+        return { value: c.id, label: c.label + '  (' + (c.points > 0 ? '+' : '') + c.points + ')' };
+      }));
+      var reason = el('input');
+      reason.placeholder = 'Reason (required beyond −2 points)';
+
+      var controls = el('div', 'controls');
+      controls.appendChild(labelled('Section', secSel));
+      controls.appendChild(labelled('Student', studentSel));
+      controls.appendChild(labelled('Entry', catSel));
+      controls.appendChild(labelled('Reason', reason));
+      box.body.appendChild(controls);
+
+      var hint = el('p', 'muted small');
+      hint.style.marginTop = '10px';
+      hint.textContent = 'Your account may award up to ' + cats.limit +
+        ' points per entry, and ' + cats.dailyCap + ' negative points per day.';
+      box.body.appendChild(hint);
+
+      var give = el('button', 'btn primary', 'Award points');
+      give.onclick = function () {
+        var cat = cats.categories.filter(function (c) { return c.id === catSel.value; })[0];
+        give.disabled = true;
+        rpc('api_awardPoints', State.token, {
+          studentId: studentSel.value,
+          category: cat.id,
+          points: cat.points,
+          reason: reason.value || cat.label
+        }).then(function (res) {
+          toast('Recorded — new total ' + res.newTotal +
+                (res.notifyParent ? ' · parent will be notified' : ''));
+          reason.value = '';
+        }).catch(function (e) { toast(e.message, true); })
+          .then(function () { give.disabled = false; });
+      };
+      box.body.appendChild(give);
+      p.appendChild(box.card);
+
+      function loadRoster() {
+        rpc('api_roster', State.token, secSel.value).then(function (rows) {
+          studentSel.innerHTML = '';
+          rows.forEach(function (s) {
+            var o = el('option', '', esc(s.rollNo + ' · ' + s.name));
+            o.value = s.studentId;
+            studentSel.appendChild(o);
+          });
+        });
+      }
+      secSel.onchange = loadRoster;
+      loadRoster();
+    }
+
+    if (watch) {
+      var w = card('Students needing attention',
+        tableHtml(['Student', 'Class', 'Net points'],
+          watch.watchlist.map(function (r) {
+            return [esc(r.name), esc(r.sectionKey),
+                    '<span class="num pill bad">' + r.points + '</span>'];
+          })));
+      w.body.className = 'card-body flush';
+      p.appendChild(w.card);
+
+      if (watch.houses.length) {
+        var h = card('House points',
+          tableHtml(['House', 'Points'], watch.houses.map(function (x) {
+            return [esc(x.house), '<span class="num">' + x.points + '</span>'];
+          })));
+        h.body.className = 'card-body flush';
+        p.appendChild(h.card);
+      }
+    }
+  }).catch(fail);
+}
+
+/* --------------------------------------------------------------- notices */
+function viewNotices() {
+  rpc('api_notices', State.token).then(function (list) {
+    busy(false);
+    var p = panel();
+
+    var box = card('Post a notice', '');
+    var title = el('input');
+    title.placeholder = 'Notice title';
+    var body = el('textarea');
+    body.rows = 3;
+    body.placeholder = 'What should parents know?';
+    box.body.appendChild(labelled('Title', title));
+    box.body.appendChild(labelled('Message', body));
+    var post = el('button', 'btn primary', 'Post notice');
+    post.style.marginTop = '12px';
+    post.onclick = function () {
+      post.disabled = true;
+      rpc('api_postNotice', State.token, title.value, body.value)
+        .then(function () { toast('Notice posted'); showTab('notices'); })
+        .catch(function (e) { toast(e.message, true); post.disabled = false; });
+    };
+    box.body.appendChild(post);
+    p.appendChild(box.card);
+
+    var listCard = card('Recent notices', '');
+    if (!list.length) {
+      listCard.body.innerHTML = '<div class="empty">No notices yet.</div>';
+    } else {
+      list.slice(0, 15).forEach(function (x) {
+        var item = el('div', 'notice');
+        item.innerHTML = '<h4>' + esc(x.title) + '</h4><p>' + esc(x.body) + '</p>' +
+          '<div class="when">' + esc(String(x.ts).slice(0, 16)) + '</div>';
+        listCard.body.appendChild(item);
+      });
+    }
+    p.appendChild(listCard.card);
+  }).catch(fail);
+}
+
+/* ----------------------------------------------------------- parent home */
+function viewParentHome() {
+  rpc('api_parentHome', State.token).then(function (d) {
+    busy(false);
+    var p = panel();
+
+    d.children.forEach(function (ch) {
+      var c = el('div', 'card');
+      var head = el('div', 'child-head');
+      head.innerHTML =
+        '<div class="avatar">' + esc(initials(ch.name)) + '</div>' +
+        '<div class="who"><strong>' + esc(ch.name) + '</strong>' +
+        '<span>' + esc(ch.sectionKey) + ' · Roll ' + esc(ch.rollNo) + '</span></div>';
+      c.appendChild(head);
+
+      var kv = el('div', 'kv-list');
+      function item(k, v, cls) {
+        kv.appendChild(el('div', 'kv-item',
+          '<span class="k">' + esc(k) + '</span>' +
+          '<span class="v ' + (cls || '') + '">' + v + '</span>'));
+      }
+
+      if (ch.attendance) {
+        item('Attendance (' + ch.attendance.month + ')',
+          ch.attendance.percent + '% <span class="muted small">(' +
+          ch.attendance.present + ' present, ' + ch.attendance.absent + ' absent)</span>');
+      }
+      if (ch.result) {
+        item(ch.result.exam,
+          ch.result.percent + '% · grade ' + ch.result.grade +
+          ' · position ' + ch.result.position + ' of ' + ch.result.classSize);
+      } else {
+        item('Result', '<span class="muted">Not published yet</span>');
+      }
+      item('Conduct', ch.conduct.points + ' points · ' + ch.conduct.grade +
+                      ' (' + ch.conduct.remark + ')');
+      item('Fees outstanding',
+        (ch.fees.outstanding > 0
+          ? '<span class="pill bad">' + money(ch.fees.outstanding) + '</span>'
+          : '<span class="pill ok">Cleared</span>'));
+      c.appendChild(kv);
+
+      // Subject breakdown, if a result is published.
+      if (ch.result && ch.result.subjects) {
+        var body = el('div', 'card-body');
+        body.appendChild(el('h4', '', 'Subject marks'));
+        ch.result.subjects.forEach(function (s) {
+          if (s.obtained === null) return;
+          var pct = Math.round(s.obtained * 100 / s.max);
+          var line = el('div');
+          line.style.marginBottom = '9px';
+          line.innerHTML =
+            '<div style="display:flex;justify-content:space-between;font-size:.87rem">' +
+            '<span>' + esc(s.subject) + (s.absent ? ' <span class="pill grey">Absent</span>' : '') + '</span>' +
+            '<span class="num"><strong>' + s.obtained + '</strong>' +
+            '<span class="muted">/' + s.max + '</span></span></div>' +
+            '<div class="subject-bar"><i style="width:' + pct + '%"></i></div>';
+          body.appendChild(line);
+        });
+        c.appendChild(body);
+      }
+
+      // Fee history.
+      if (ch.fees.rows.length) {
+        var fees = el('div', 'card-body flush');
+        fees.innerHTML = tableHtml(['Month', 'Amount', 'Paid', 'Status'],
+          ch.fees.rows.map(function (r) {
+            return [esc(r.month), '<span class="num">' + money(r.net) + '</span>',
+              '<span class="num">' + money(r.paid) + '</span>',
+              '<span class="pill ' + (r.status === 'Paid' ? 'ok' :
+                r.status === 'Partial' ? 'warn' : 'bad') + '">' + r.status + '</span>'];
+          }));
+        c.appendChild(fees);
+      }
+
+      p.appendChild(c);
+    });
+
+    if (d.notices.length) {
+      var n = card('School notices', '');
+      d.notices.forEach(function (x) {
+        var item = el('div', 'notice');
+        item.innerHTML = '<h4>' + esc(x.title) + '</h4><p>' + esc(x.body) + '</p>' +
+          '<div class="when">' + esc(String(x.ts).slice(0, 16)) + '</div>';
+        n.body.appendChild(item);
+      });
+      p.appendChild(n.card);
+    }
+  }).catch(fail);
+}
+
+/* ------------------------------------------------------------- small dom */
+function selectEl(options) {
+  var s = el('select');
+  options.forEach(function (o) {
+    var opt = el('option', '', esc(o.label));
+    opt.value = o.value;
+    s.appendChild(opt);
+  });
+  return s;
+}
+
+function labelled(text, node) {
+  var w = el('div', 'control');
+  w.appendChild(el('label', '', esc(text)));
+  w.appendChild(node);
+  return w;
+}
+
+function todayStr() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') +
+         '-' + String(d.getDate()).padStart(2, '0');
+}
+</script>
