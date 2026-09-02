@@ -60,12 +60,13 @@ function resetRnd_() { _rndState = 20260901; }
 
 // ---------------------------------------------------------------- orchestrator
 
-/**
- * Run this once from the Apps Script editor. Safe to re-run: it continues
- * from the last completed stage.
- */
-function setupAndSeedDemoSchool() {
-  var stages = [
+var SEED_STAGE_NAMES = ['files', 'structure', 'staff', 'students', 'users',
+                        'attendance', 'exams', 'fees', 'discipline'];
+
+/** Function declarations are hoisted into the shared global scope, so building
+ *  this inside a call always resolves them. */
+function seedStages_() {
+  return [
     ['files',      seed_createFiles_],
     ['structure',  seed_academicStructure_],
     ['staff',      seed_staff_],
@@ -76,38 +77,121 @@ function setupAndSeedDemoSchool() {
     ['fees',       seed_fees_],
     ['discipline', seed_discipline_]
   ];
+}
 
-  var done = Number(props_().getProperty(PROP.SEED_STAGE) || 0);
+/**
+ * Stop starting new stages after this much wall clock, leaving headroom inside
+ * the 6-minute cap for the stage already running to finish.
+ */
+var SEED_BUDGET_MS = 4 * 60 * 1000;
+
+/**
+ * Run this once from the Apps Script editor.
+ *
+ * Each stage records its own completion, so this is safe to re-run and safe to
+ * be resumed by a trigger. If the budget runs out with stages left, it schedules
+ * itself to continue in a minute and returns — the same checkpoint-and-resume
+ * pattern every school-wide job in this system uses.
+ */
+function setupAndSeedDemoSchool() {
+  var started = new Date().getTime();
   var log = [];
   resetRnd_();
 
-  for (var i = done; i < stages.length; i++) {
-    var name = stages[i][0];
-    var started = new Date().getTime();
-    console.log('seeding stage: ' + name);
-    var result = stages[i][1]();
-    props_().setProperty(PROP.SEED_STAGE, String(i + 1));
+  var stages = seedStages_();
+  var done = Number(props_().getProperty(PROP.SEED_STAGE) || 0);
+
+  while (done < stages.length) {
+    if (new Date().getTime() - started > SEED_BUDGET_MS) {
+      scheduleSeedContinuation_();
+      var paused = {
+        status: 'paused — will continue automatically in about a minute',
+        completed: done + ' of ' + stages.length + ' stages',
+        nextStage: stages[done][0],
+        stages: log
+      };
+      console.log(JSON.stringify(paused, null, 2));
+      return paused;
+    }
+
+    var name = stages[done][0];
+    var stageStart = new Date().getTime();
+    console.log('seeding stage ' + (done + 1) + '/' + stages.length + ': ' + name);
+
+    var result = stages[done][1]();
+
+    done++;
+    props_().setProperty(PROP.SEED_STAGE, String(done));
     log.push(name + ': ' + result + ' (' +
-             Math.round((new Date().getTime() - started) / 1000) + 's)');
+             Math.round((new Date().getTime() - stageStart) / 1000) + 's)');
   }
 
+  clearSeedTriggers_();
   bumpCache_();
+
   var out = {
+    status: 'complete',
     school: DEMO.schoolName,
     year: APP.year,
+    stages: log,
+    logins: showDemoLogins(),
     coreSheet: 'https://docs.google.com/spreadsheets/d/' + props_().getProperty(PROP.CORE_ID),
     academicsSheet: 'https://docs.google.com/spreadsheets/d/' + props_().getProperty(PROP.ACAD_ID),
     feesSheet: 'https://docs.google.com/spreadsheets/d/' + props_().getProperty(PROP.FEES_ID),
-    folder: 'https://drive.google.com/drive/folders/' + props_().getProperty(PROP.ROOT_FOLDER),
-    stages: log
+    folder: 'https://drive.google.com/drive/folders/' + props_().getProperty(PROP.ROOT_FOLDER)
   };
   console.log(JSON.stringify(out, null, 2));
   return out;
 }
 
+function scheduleSeedContinuation_() {
+  clearSeedTriggers_();
+  ScriptApp.newTrigger('setupAndSeedDemoSchool').timeBased().after(60 * 1000).create();
+}
+
+function clearSeedTriggers_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'setupAndSeedDemoSchool') ScriptApp.deleteTrigger(t);
+  });
+}
+
+/** Where has the seed got to? Run this any time to check. */
+function seedStatus() {
+  var done = Number(props_().getProperty(PROP.SEED_STAGE) || 0);
+  var pending = ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === 'setupAndSeedDemoSchool';
+  }).length;
+
+  var out = {
+    completedStages: done + ' of ' + SEED_STAGE_NAMES.length,
+    nextStage: done < SEED_STAGE_NAMES.length ? SEED_STAGE_NAMES[done] : '— finished —',
+    continuationScheduled: pending > 0,
+    setUp: isSetUp_()
+  };
+
+  if (isSetUp_()) {
+    out.rowCounts = {
+      students: countRows_(SS_KEY.CORE, 'Students'),
+      users: countRows_(SS_KEY.CORE, 'Users'),
+      marks: countRows_(SS_KEY.ACAD, 'Marks'),
+      invoices: countRows_(SS_KEY.FEES, 'Invoices'),
+      payments: countRows_(SS_KEY.FEES, 'Payments'),
+      discipline: countRows_(SS_KEY.ACAD, 'Discipline')
+    };
+  }
+  console.log(JSON.stringify(out, null, 2));
+  return out;
+}
+
+function countRows_(ssKey, name) {
+  var sh = ss_(ssKey).getSheetByName(name);
+  return sh ? Math.max(0, sh.getLastRow() - 1) : 0;
+}
+
 /** Wipes the seed marker so the next run starts over (files are NOT deleted). */
 function resetSeedProgress() {
   props_().deleteProperty(PROP.SEED_STAGE);
+  clearSeedTriggers_();
   return 'seed progress cleared';
 }
 
@@ -168,6 +252,10 @@ function seed_createFiles_() {
 // ---------------------------------------------------- stage 2: school structure
 
 function seed_academicStructure_() {
+  ['Classes', 'Sections', 'Subjects'].forEach(function (n) { Repo.clearBody(SS_KEY.CORE, n); });
+  Repo.clearBody(SS_KEY.ACAD, 'GradeScheme');
+  ['FeeHeads', 'FeeStructure'].forEach(function (n) { Repo.clearBody(SS_KEY.FEES, n); });
+
   var classes = [], sections = [];
   for (var n = 1; n <= 10; n++) {
     var wing = n <= 5 ? 'Primary' : (n <= 8 ? 'Middle' : 'Secondary');
@@ -241,6 +329,8 @@ function seed_academicStructure_() {
 // ------------------------------------------------------------- stage 3: staff
 
 function seed_staff_() {
+  ['Staff', 'Assignments'].forEach(function (n) { Repo.clearBody(SS_KEY.CORE, n); });
+
   var staff = [], assignments = [];
   var seq = 0;
 
@@ -332,6 +422,8 @@ function subjectsForClass_(classId) {
 // ---------------------------------------------------------- stage 4: students
 
 function seed_students_() {
+  ['Students', 'Guardians', 'Enrollment'].forEach(function (n) { Repo.clearBody(SS_KEY.CORE, n); });
+
   var students = [], guardians = [], enrollment = [];
   var sections = Repo.readAll(SS_KEY.CORE, 'Sections');
   var n = 0;
@@ -409,22 +501,38 @@ function seed_students_() {
 // ------------------------------------------------------------- stage 5: users
 
 function seed_users_() {
+  Repo.clearBody(SS_KEY.CORE, 'Users');
+
   var users = [];
   var seq = 0;
   var p = props_();
 
+  // Every demo account shares one PIN, so the hash is computed ONCE and reused
+  // rather than 640 times. Hashing is deliberately expensive (800 rounds), and
+  // per-user hashing here is what blew the 6-minute execution limit.
+  //
+  // This is a demo-data shortcut only. Accounts created through the app get
+  // their own salt via Auth.createUser(), which is unchanged — production
+  // security is not what is being traded away here.
+  var demoSalt = newSalt_();
+  var demoHash = hashPin_(DEMO.pin, demoSalt);
+
   function add(loginId, name, role, scopeType, scopeIds, personId, personType) {
-    users.push(Auth.createUser({
+    users.push({
       user_id: userId_(++seq),
       person_id: personId,
       person_type: personType || 'staff',
       login_id: loginId,
       display_name: name,
-      pin: DEMO.pin,
+      pin_hash: demoHash,
+      salt: demoSalt,
       role: role,
       scope_type: scopeType,
-      scope_ids: scopeIds
-    }));
+      scope_ids: scopeIds || '',
+      status: 'active',
+      last_login: '',
+      failed_count: 0
+    });
   }
 
   var staff = Repo.indexBy(Repo.readAll(SS_KEY.CORE, 'Staff'), 'staff_id');
@@ -527,6 +635,8 @@ function seed_attendance_() {
 // ------------------------------------------------------------- stage 7: exams
 
 function seed_exams_() {
+  ['ExamDefs', 'ExamSubjects', 'Marks'].forEach(function (n) { Repo.clearBody(SS_KEY.ACAD, n); });
+
   Repo.append(SS_KEY.ACAD, 'ExamDefs', [
     { exam_id: 'EX-T1', exam_name: 'First Term Examination', year: APP.year, term: 'Term 1',
       starts_on: '2026-07-20', ends_on: '2026-07-31', status: 'completed', published: 'yes' },
@@ -613,6 +723,8 @@ function seed_exams_() {
 // -------------------------------------------------------------- stage 8: fees
 
 function seed_fees_() {
+  ['Concessions', 'Invoices', 'Payments'].forEach(function (n) { Repo.clearBody(SS_KEY.FEES, n); });
+
   var enrollment = Repo.readAll(SS_KEY.CORE, 'Enrollment');
   var structure = Repo.readAll(SS_KEY.FEES, 'FeeStructure');
   var tuitionByClass = {};
@@ -717,6 +829,8 @@ function seed_fees_() {
 // -------------------------------------------------------- stage 9: discipline
 
 function seed_discipline_() {
+  ['Discipline', 'Notices'].forEach(function (n) { Repo.clearBody(SS_KEY.ACAD, n); });
+
   var enrollment = Repo.readAll(SS_KEY.CORE, 'Enrollment');
   var sections = Repo.indexBy(Repo.readAll(SS_KEY.CORE, 'Sections'), 'section_id');
   var cats = Discipline.categories();

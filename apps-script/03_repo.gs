@@ -157,6 +157,15 @@ var Repo = (function () {
     return sh;
   }
 
+  /** Deletes every row below the header. Makes a re-run of a stage safe. */
+  function clearBody(ssKey, name) {
+    var sh = sheet_(ssKey, name);
+    var last = sh.getLastRow();
+    if (last > 1) sh.deleteRows(2, last - 1);
+    bumpCache_();
+    return last > 1 ? last - 1 : 0;
+  }
+
   function audit(session, action, entity, entityId, before, after, note) {
     try {
       append(SS_KEY.CORE, 'AuditLog', [{
@@ -186,6 +195,7 @@ var Repo = (function () {
     updateRow: updateRow,
     updateMany: updateMany,
     replaceAll: replaceAll,
+    clearBody: clearBody,
     audit: audit,
     sheet: sheet_,
     headers: headers_
