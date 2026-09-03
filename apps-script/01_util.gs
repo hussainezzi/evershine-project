@@ -105,23 +105,76 @@ function sign_(payload) {
 }
 
 // --------------------------------------------------------------------- cache
+//
+// Two things matter here, and the first version got both wrong.
+//
+// 1. CacheService caps a single value at 100KB. The Students table serialises
+//    to roughly 350KB, so the old "skip if too big" guard meant the largest and
+//    hottest tables were NEVER cached — every read went to the sheet. Values are
+//    now split across numbered chunk keys and reassembled.
+//
+// 2. Invalidation was a single global counter, so saving one attendance row
+//    threw away the cached students, sections, config and permission matrix
+//    too. Versions are now per table.
 
-function cacheVersion_() {
-  var v = props_().getProperty(PROP.CACHE_VER);
-  if (!v) { v = '1'; props_().setProperty(PROP.CACHE_VER, v); }
-  return v;
+var CACHE_CHUNK = 90000;   // chars per cache entry, under the 100KB cap
+var CACHE_MAX_CHUNKS = 24; // ~2MB ceiling for any one table
+
+var _verMap = null;
+
+/** Per-table version numbers, held in one property and memoised per execution. */
+function versions_() {
+  if (_verMap) return _verMap;
+  try {
+    _verMap = JSON.parse(props_().getProperty(PROP.CACHE_VER) || '{}');
+  } catch (e) {
+    _verMap = {};
+  }
+  return _verMap;
 }
 
+function versionOf_(table) {
+  var v = versions_();
+  return v[table] || 1;
+}
+
+/** Invalidates one table only. Everything else stays warm. */
+function bumpTable_(table) {
+  var v = versions_();
+  v[table] = (v[table] || 1) + 1;
+  props_().setProperty(PROP.CACHE_VER, JSON.stringify(v));
+  return v[table];
+}
+
+/** Nuclear option — only for setup and seeding. */
 function bumpCache_() {
-  var v = Number(cacheVersion_()) + 1;
-  props_().setProperty(PROP.CACHE_VER, String(v));
-  return v;
+  _verMap = {};
+  props_().setProperty(PROP.CACHE_VER, '{}');
+}
+
+function cacheKey_(key) {
+  return key + '@' + versionOf_(key);
 }
 
 function cacheGet_(key) {
   try {
-    var raw = CacheService.getScriptCache().get(cacheVersion_() + ':' + key);
-    return raw ? JSON.parse(raw) : null;
+    var cache = CacheService.getScriptCache();
+    var base = cacheKey_(key);
+    var meta = cache.get(base + '#n');
+    if (!meta) return null;
+
+    var n = Number(meta);
+    var names = [];
+    for (var i = 0; i < n; i++) names.push(base + '#' + i);
+
+    var parts = cache.getAll(names);   // one round trip for every chunk
+    var raw = '';
+    for (var j = 0; j < n; j++) {
+      var piece = parts[base + '#' + j];
+      if (piece === undefined || piece === null) return null;  // partial eviction
+      raw += piece;
+    }
+    return JSON.parse(raw);
   } catch (e) {
     return null;
   }
@@ -130,9 +183,16 @@ function cacheGet_(key) {
 function cachePut_(key, value, seconds) {
   try {
     var raw = JSON.stringify(value);
-    // CacheService rejects oversized values; skip rather than fail the request.
-    if (raw.length > 90000) return;
-    CacheService.getScriptCache().put(cacheVersion_() + ':' + key, raw, seconds || 600);
+    var n = Math.ceil(raw.length / CACHE_CHUNK);
+    if (n > CACHE_MAX_CHUNKS) return;   // genuinely too big to be worth caching
+
+    var base = cacheKey_(key);
+    var map = { };
+    map[base + '#n'] = String(n);
+    for (var i = 0; i < n; i++) {
+      map[base + '#' + i] = raw.substr(i * CACHE_CHUNK, CACHE_CHUNK);
+    }
+    CacheService.getScriptCache().putAll(map, seconds || 900);
   } catch (e) { /* cache is an optimisation, never a dependency */ }
 }
 

@@ -95,6 +95,11 @@ var Fees = (function () {
     if (isNaN(amount) || amount <= 0) throw new Error('Amount must be more than zero.');
 
     return withLock_(function () {
+      // Fresh inside the lock: deciding whether a payment exceeds the balance
+      // must not be done against a cached view of the ledger.
+      Repo.readFresh(SS_KEY.FEES, 'Invoices');
+      Repo.readFresh(SS_KEY.FEES, 'Payments');
+
       var inv = invoices(function (i) {
         return String(i.invoice_id) === String(opts.invoiceId);
       })[0];
@@ -152,12 +157,20 @@ var Fees = (function () {
       byStudent[i.student_id] = s;
     });
 
+    // Indexed once. This used to re-scan all 600 guardians inside the loop —
+    // 300 defaulters meant 300 full scans, and it was the slowest thing on the
+    // fees page by a wide margin.
+    var payerOf = {};
+    Repo.readCached(SS_KEY.CORE, 'Guardians').forEach(function (g) {
+      if (String(g.is_fee_payer) === 'yes' && !payerOf[g.student_id]) {
+        payerOf[g.student_id] = g;
+      }
+    });
+
     return Object.keys(byStudent).map(function (sid) {
       var s = students[sid] || {};
       var e = enr[sid] || {};
-      var guardian = Repo.readCached(SS_KEY.CORE, 'Guardians').filter(function (g) {
-        return String(g.student_id) === String(sid) && String(g.is_fee_payer) === 'yes';
-      })[0] || {};
+      var guardian = payerOf[sid] || {};
       return {
         studentId: sid,
         name: s.name_en || '',

@@ -168,15 +168,28 @@ var Attendance = (function () {
     }).filter(Boolean);
   }
 
+  /**
+   * Reads only the percent column rather than the whole month grid — 600 cells
+   * instead of ~21,000. The dashboard calls this on every load.
+   */
   function monthSummary(yyyymm) {
-    var data = readMonth_(yyyymm);
-    if (!data.sheet || !data.rows.length) return { month: yyyymm, percent: 0, students: 0 };
-    var pcCol = data.headers.indexOf('percent');
-    var vals = data.rows.map(function (r) { return Number(r[pcCol] || 0); })
-                        .filter(function (v) { return v > 0; });
+    var sh = ss_(SS_KEY.ACAD).getSheetByName(attendanceSheetName_(yyyymm));
+    if (!sh) return { month: yyyymm, percent: 0, students: 0 };
+
+    var lastRow = sh.getLastRow();
+    if (lastRow < 2) return { month: yyyymm, percent: 0, students: 0 };
+
+    var headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    var pcCol = headers.indexOf('percent');
+    if (pcCol === -1) return { month: yyyymm, percent: 0, students: 0 };
+
+    var vals = sh.getRange(2, pcCol + 1, lastRow - 1, 1).getValues()
+      .map(function (r) { return Number(r[0] || 0); })
+      .filter(function (v) { return v > 0; });
+
     return {
       month: yyyymm,
-      students: data.rows.length,
+      students: lastRow - 1,
       percent: vals.length ? round2_(sum_(vals) / vals.length) : 0
     };
   }

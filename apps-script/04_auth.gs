@@ -13,7 +13,7 @@ var Auth = (function () {
   var MAX_FAILED = 5;
 
   function usersTable_() {
-    return Repo.readAll(SS_KEY.CORE, 'Users');
+    return Repo.readCached(SS_KEY.CORE, 'Users');
   }
 
   function findUser_(loginId) {
@@ -92,9 +92,11 @@ var Auth = (function () {
     }
 
     cachePut_(rateKey_(loginId), 0, 1);
-    Repo.updateRow(SS_KEY.CORE, 'Users', user._row, {
-      last_login: nowTs_(), failed_count: 0
-    });
+
+    // Deliberately NOT writing last_login here. Any write to Users invalidates
+    // its cache, and on a busy morning that would mean re-reading the whole
+    // user table on every single sign-in. The audit log below already records
+    // who signed in and when, which is the only reason the column existed.
 
     var token = issueToken_(user);
     var session = verify(token);

@@ -55,7 +55,7 @@ var Exams = (function () {
 
     var existing = {};
     var locked = false;
-    Repo.readAll(SS_KEY.ACAD, 'Marks').forEach(function (m) {
+    Repo.readCached(SS_KEY.ACAD, 'Marks').forEach(function (m) {
       if (String(m.exam_id) === String(examId) &&
           String(m.subject_id) === String(subjectId) &&
           String(m.class_id) === parts[0] && String(m.section) === parts[1]) {
@@ -106,7 +106,9 @@ var Exams = (function () {
     });
 
     return withLock_(function () {
-      var rows = Repo.readAll(SS_KEY.ACAD, 'Marks');
+      // Fresh read inside the lock — a stale memo here could silently overwrite
+      // marks another teacher saved a moment ago.
+      var rows = Repo.readFresh(SS_KEY.ACAD, 'Marks');
       var existing = {};
       rows.forEach(function (m) {
         if (String(m.exam_id) === String(examId) &&
@@ -161,7 +163,7 @@ var Exams = (function () {
 
   function lockSubject(session, examId, sectionKey, subjectId, locked) {
     var parts = sectionKey.split('-');
-    var patches = Repo.readAll(SS_KEY.ACAD, 'Marks')
+    var patches = Repo.readCached(SS_KEY.ACAD, 'Marks')
       .filter(function (m) {
         return String(m.exam_id) === String(examId) &&
                String(m.subject_id) === String(subjectId) &&
@@ -187,7 +189,7 @@ var Exams = (function () {
     var maxByStudentSubject = {};
     examSubs.forEach(function (es) { maxByStudentSubject[es.subject_id] = Number(es.max_marks); });
 
-    var marks = Repo.readAll(SS_KEY.ACAD, 'Marks').filter(function (m) {
+    var marks = Repo.readCached(SS_KEY.ACAD, 'Marks').filter(function (m) {
       return String(m.exam_id) === String(examId) &&
              String(m.class_id) === parts[0] && String(m.section) === parts[1];
     });

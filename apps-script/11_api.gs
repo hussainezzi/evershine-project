@@ -288,6 +288,63 @@ function api_reverseEntry(token, entryId, note) {
   });
 }
 
+// ------------------------------------------------------- combined dashboard
+
+/**
+ * The principal's dashboard used to be three round trips. Each google.script.run
+ * call carries roughly a second of fixed overhead regardless of the work done,
+ * so collapsing them saves more wall clock than any query tuning.
+ */
+function api_principalHome(token) {
+  return call_(function () {
+    var s = guard(token, 'reports.read');
+    var month = Attendance.latestMonth();
+    return {
+      dashboard: School.dashboard(s),
+      attendance: {
+        summary: month ? Attendance.monthSummary(month) : null,
+        chronic: month ? Attendance.chronicAbsentees(month, 3).slice(0, 8) : []
+      },
+      fees: {
+        summary: Fees.collectionSummary(),
+        defaulters: Fees.defaulters(1).slice(0, 8)
+      }
+    };
+  });
+}
+
+/**
+ * Timing probe. Reports how long each hot read takes and whether it was served
+ * from cache, so a slow page can be diagnosed instead of guessed at.
+ */
+function api_perf(token) {
+  return call_(function () {
+    guard(token, 'reports.read');
+
+    function timed(label, fn) {
+      var t = new Date().getTime();
+      var n = 0;
+      try { var r = fn(); n = (r && r.length) || 0; } catch (e) { n = -1; }
+      return { step: label, ms: new Date().getTime() - t, rows: n };
+    }
+
+    var steps = [
+      timed('Students (cold)', function () { return Repo.readFresh(SS_KEY.CORE, 'Students'); }),
+      timed('Students (warm)', function () { return Repo.readCached(SS_KEY.CORE, 'Students'); }),
+      timed('Marks', function () { return Repo.readCached(SS_KEY.ACAD, 'Marks'); }),
+      timed('Invoices', function () { return Repo.readCached(SS_KEY.FEES, 'Invoices'); }),
+      timed('Payments', function () { return Repo.readCached(SS_KEY.FEES, 'Payments'); }),
+      timed('Defaulter list', function () { return Fees.defaulters(1); }),
+      timed('Attendance summary', function () {
+        var m = Attendance.latestMonth();
+        return m ? [Attendance.monthSummary(m)] : [];
+      })
+    ];
+
+    return { steps: steps, totalMs: sum_(steps.map(function (s) { return s.ms; })) };
+  });
+}
+
 // ------------------------------------------------------------------ notices
 
 function api_notices(token) {

@@ -209,8 +209,11 @@ function showTab(tab) {
 
 /* ------------------------------------------------------------- dashboard */
 function viewDashboard() {
-  rpc('api_dashboard', State.token).then(function (d) {
+  // One call, not three. Each round trip costs about a second of fixed
+  // overhead, which dominated the page load.
+  rpc('api_principalHome', State.token).then(function (home) {
     busy(false);
+    var d = home.dashboard;
     var p = panel();
 
     var stats = el('div', 'grid k4');
@@ -230,39 +233,32 @@ function viewDashboard() {
     more.appendChild(statTile('Academic year', State.session.year, 'April – March'));
     p.appendChild(more);
 
-    // Attendance watchlist and defaulters, side by side.
+    // Attendance watchlist and defaulters — already in the same payload.
     var row = el('div', 'grid k2');
-    var left = card('Chronic absentees', '<div class="empty">Loading…</div>');
-    var right = card('Largest outstanding balances', '<div class="empty">Loading…</div>');
-    row.appendChild(left.card); row.appendChild(right.card);
-    p.appendChild(row);
 
-    rpc('api_attendanceSummary', State.token, null).then(function (a) {
-      if (!a.chronic.length) {
-        left.body.innerHTML = '<div class="empty">Nobody absent 3 days running.</div>';
-        return;
-      }
-      left.body.className = 'card-body flush';
-      left.body.innerHTML = tableHtml(
-        ['Student', 'Class', 'Run', '%'],
-        a.chronic.slice(0, 8).map(function (r) {
+    var chronic = home.attendance.chronic || [];
+    var left = card('Chronic absentees', chronic.length
+      ? tableHtml(['Student', 'Class', 'Run', '%'], chronic.map(function (r) {
           return [esc(r.name), esc(r.sectionKey),
                   '<span class="num">' + r.consecutive + '</span>',
                   '<span class="num">' + r.percent + '%</span>'];
-        }));
-    }).catch(function () { left.body.innerHTML = '<div class="empty">—</div>'; });
+        }))
+      : '<div class="empty">Nobody absent 3 days running.</div>');
+    if (chronic.length) left.body.className = 'card-body flush';
 
-    rpc('api_feeSummary', State.token).then(function (f) {
-      right.body.className = 'card-body flush';
-      right.body.innerHTML = tableHtml(
-        ['Student', 'Class', 'Months', 'Balance'],
-        f.defaulters.slice(0, 8).map(function (r) {
+    var defaulters = home.fees.defaulters || [];
+    var right = card('Largest outstanding balances', defaulters.length
+      ? tableHtml(['Student', 'Class', 'Months', 'Balance'], defaulters.map(function (r) {
           return [esc(r.name), esc(r.sectionKey),
                   '<span class="num">' + r.monthsOverdue + '</span>',
                   '<span class="num">' + money(r.balance) + '</span>'];
-        }));
-    }).catch(function () { right.body.innerHTML = '<div class="empty">—</div>'; });
+        }))
+      : '<div class="empty">Nothing outstanding.</div>');
+    if (defaulters.length) right.body.className = 'card-body flush';
 
+    row.appendChild(left.card);
+    row.appendChild(right.card);
+    p.appendChild(row);
   }).catch(fail);
 }
 
