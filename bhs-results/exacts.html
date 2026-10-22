@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BHS Report Card</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Source+Serif+4:wght@400;600;700&family=Public+Sans:wght@400;600&display=swap">
+  <style>
+    :root { --bg: #eef1f6; --panel: #ffffff; --ink: #1c2333; --muted: #5d6779; --line: #c9d0dc; --brand: #1f3f8f; --brand-ink: #ffffff;
+            --err-bg: #fde8e8; --err: #8a1c1c; --info-bg: #e6edf9; --info: #1f3f8f; --u: #ffd6d6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Public Sans", "Segoe UI", system-ui, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 20px 16px 48px; }
+    .panel { background: var(--panel); border-radius: 12px; box-shadow: 0 2px 16px rgba(20, 30, 60, .08); padding: 22px 20px; }
+    header { text-align: center; }
+    header img { height: 84px; }
+    h1 { font-family: "Source Serif 4", Georgia, serif; font-size: 1.5rem; margin: 8px 0 2px; }
+    .sub { color: var(--muted); margin: 0 0 16px; font-size: .95rem; }
+    .tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .tabs button { border: 1px solid var(--line); background: #fff; color: var(--ink); padding: 8px 14px; border-radius: 999px; cursor: pointer; font: inherit; }
+    .tabs button[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    label { font-size: .85rem; font-weight: 600; display: block; margin-bottom: 4px; }
+    select, input { width: 100%; padding: 11px 12px; border: 1px solid var(--line); border-radius: 8px; font: inherit; background: #fff; color: var(--ink); }
+    .full { grid-column: 1 / -1; }
+    button.go { grid-column: 1 / -1; padding: 12px; border: 0; border-radius: 8px; background: var(--brand); color: var(--brand-ink); font: inherit; font-weight: 600; cursor: pointer; }
+    button.go:disabled { opacity: .65; cursor: wait; }
+    details { grid-column: 1 / -1; font-size: .85rem; color: var(--muted); }
+    .msg { margin-top: 16px; padding: 12px 14px; border-radius: 8px; text-align: center; }
+    .msg.err { background: var(--err-bg); color: var(--err); }
+    .msg.info { background: var(--info-bg); color: var(--info); }
+    .actions { text-align: center; margin-top: 14px; }
+    .actions button { padding: 9px 18px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; cursor: pointer; }
+    @media (max-width: 520px) { form { grid-template-columns: 1fr; } }
+
+    /* ---- printed card look ---- */
+    .card { background: #fff; color: #000; border: 2px solid #000; margin: 18px auto 0; padding: 14px; max-width: 680px; }
+    .card table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    .card th, .card td { border: 1px solid #000; padding: 4px 7px; vertical-align: middle; }
+    .card th { background: #ececec; }
+    .card .c { text-align: center; width: 70px; }
+    .card .tot td { font-weight: 700; background: #f6f6f6; }
+    .card .U { background: var(--u); }
+    .card .school { text-align: center; font-weight: 700; margin: 0; }
+    .card .hd { text-align: center; font-weight: 700; margin: 2px 0 10px; }
+    .card .sigs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 26px; text-align: center; font-size: .9em; }
+    .card .sigs div { border-top: 1px solid #000; padding-top: 4px; }
+    .card .key { font-size: .82em; text-align: center; margin: 6px 0; }
+    .card.di { direction: rtl; font-family: "Amiri", "Traditional Arabic", "Times New Roman", serif; font-size: 15px; }
+    .card.di .lat { direction: ltr; unicode-bidi: isolate; }
+    .card.di .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card.ex { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; font-size: 13.5px; }
+    .card.ex .sec td:first-child { width: 68%; }
+    .card .sect { background: #dcdcdc; font-weight: 700; text-align: center; }
+    @media (max-width: 520px) { .card.di .grid2 { grid-template-columns: 1fr; } .card { padding: 8px; } }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .panel { box-shadow: none; padding: 0; }
+      .card { margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <header class="no-print">
+        <img src="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png" alt="MSB logo">
+        <h1 id="pageTitle">BHS Report Card</h1>
+        <p class="sub">MSB Badri &middot; Classes 1&ndash;4 &middot; <span id="termLine">Midterm 2026-27</span></p>
+      </header>
+      <div class="tabs no-print" role="group" aria-label="Report card">
+        <button type="button" id="tabDi" aria-pressed="true">دراسة اسلامية &mdash; DI Report</button>
+        <button type="button" id="tabEx" aria-pressed="false">Progress Report (Exacts)</button>
+      </div>
+      <form id="f" class="no-print" autocomplete="off">
+        <div><label for="cls">Class</label><select id="cls" required><option value="">Loading…</option></select></div>
+        <div><label for="its">ITS Number</label><input id="its" inputmode="numeric" maxlength="8" placeholder="8 digits" required></div>
+        <details><summary>Staff preview</summary><label for="pin" style="margin-top:8px">Staff preview PIN</label><input id="pin" type="password"></details>
+        <button class="go" id="go" type="submit">Show Report Card</button>
+      </form>
+      <div id="out"></div>
+      <div class="actions no-print" id="actions" hidden><button type="button" onclick="window.print()">Print / Save as PDF</button></div>
+    </div>
+  </div>
+
+  <script>
+    // When opened from Apps Script, google.script.run is used. The GitHub copy sets API_URL instead.
+    var INITIAL_CARD = "exacts";
+    var API_URL = "https://script.google.com/macros/s/AKfycbxRRy0j2I4jCg1ZPVt8BgOWILLTss9md_LMQjVkU6axJWPIjsgi8UnmtBoQGTxsP-wm/exec";
+    var card = (INITIAL_CARD === "exacts") ? "exacts" : "di";
+
+    var $ = function (id) { return document.getElementById(id); };
+    function esc(v) { return String(v == null ? "" : v).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+    function show(v) { return v === "" || v == null ? "&mdash;" : esc(v); }
+    function gcls(g) { return g === "U" ? ' class="c lat U"' : ' class="c lat"'; }
+
+    function call(fn, args, ok, fail) {
+      if (window.google && google.script && google.script.run) {
+        var r = google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { fail(e.message || String(e)); });
+        r[fn].apply(r, args);
+      } else {
+        var qs = fn === "getMeta" ? "api=meta"
+          : "api=card&type=" + encodeURIComponent(args[0]) + "&class=" + encodeURIComponent(args[1]) + "&its=" + encodeURIComponent(args[2]) + "&pin=" + encodeURIComponent(args[3] || "");
+        fetch(API_URL + "?" + qs, { credentials: "omit" }).then(function (x) { return x.json(); }).then(ok)
+          .catch(function () { fail("Could not reach the results server. Check your internet connection and try again."); });
+      }
+    }
+
+    function msg(kind, text) { $("actions").hidden = true; $("out").innerHTML = '<div class="msg ' + kind + '">' + esc(text) + "</div>"; }
+
+    function setCard(c) {
+      card = c;
+      $("tabDi").setAttribute("aria-pressed", c === "di");
+      $("tabEx").setAttribute("aria-pressed", c === "exacts");
+      $("pageTitle").textContent = c === "di" ? "DI Report Card" : "Progress Report";
+      document.title = c === "di" ? "BHS DI Report Card" : "BHS Progress Report";
+      $("out").innerHTML = ""; $("actions").hidden = true;
+    }
+    $("tabDi").onclick = function () { setCard("di"); };
+    $("tabEx").onclick = function () { setCard("exacts"); };
+    setCard(card);
+
+    call("getMeta", [], function (m) {
+      $("termLine").textContent = m.term + " " + m.year;
+      $("cls").innerHTML = '<option value="">Choose class</option>' + m.classes.map(function (k) { return '<option value="' + k + '">Grade ' + k.charAt(0) + " " + k.charAt(1) + "</option>"; }).join("");
+    }, function (e) { msg("err", e); });
+
+    $("f").addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      var its = $("its").value.trim();
+      if (!$("cls").value) { msg("err", "Please choose a class."); return; }
+      if (!/^\d{8}$/.test(its)) { msg("err", "Please enter the 8-digit ITS Number."); return; }
+      $("go").disabled = true; $("go").textContent = "Fetching report card…";
+      msg("info", "Fetching report card…");
+      call("getCard", [card, $("cls").value, its, $("pin").value], function (r) {
+        $("go").disabled = false; $("go").textContent = "Show Report Card";
+        if (!r.success) { msg(r.closed ? "info" : "err", r.message); return; }
+        $("out").innerHTML = r.type === "di" ? renderDi(r) : renderEx(r);
+        $("actions").hidden = false;
+      }, function (e) { $("go").disabled = false; $("go").textContent = "Show Report Card"; msg("err", e); });
+    });
+
+    function block(b) {
+      var rows = b.rows.map(function (x) {
+        return "<tr" + (x.total ? ' class="tot"' : "") + "><td>" + esc(x.label) + "</td><td" + gcls(x.grade) + ">" + show(x.grade) + "</td></tr>";
+      }).join("");
+      return "<table>" + (b.title ? '<tr><th colspan="2">' + esc(b.title) + "</th></tr>" : "") + rows + "</table>";
+    }
+
+    function renderDi(r) {
+      var s = r.student;
+      var h = '<div class="card di">' +
+        '<p class="school">المدرسة السيفية البرهانية - حيدري</p>' +
+        '<p class="hd">' + esc(r.heading) + " &mdash; للسنة الدراسية " + esc(r.year) + "</p>" +
+        "<table><tr><th>الاسم:</th><td>" + show(s.name) + "</td><th>الدرجة:</th><td class=\"lat\">" + esc(r.grade + " " + r.section) + "</td></tr>" +
+        '<tr><th>Roll No:</th><td class="lat">' + show(s.roll) + '</td><th>ITS:</th><td class="lat">' + show(s.its) + "</td></tr></table>";
+      h += '<div class="grid2">';
+      r.sections.forEach(function (sec) {
+        h += "<div><table><tr><td class=\"sect\">" + esc(sec.title) + "</td></tr></table>" + sec.blocks.map(block).join("") + "</div>";
+      });
+      h += "</div>";
+      h += "<table><tr><td class=\"sect\" colspan=\"3\">Overall Achievement &mdash; المجموع</td></tr><tr><th></th><th>%</th><th>Grade</th></tr>" +
+        r.overall.map(function (o) { return "<tr><td>" + esc(o.label) + '</td><td class="c lat">' + show(o.pct) + "</td><td" + gcls(o.grade) + ">" + show(o.grade) + "</td></tr>"; }).join("") + "</table>";
+      h += "<table><tr><th>الامور التربوية &mdash; Tarbiyat App Usage</th><td>" + show(r.tarbiyat) + "</td></tr>" +
+        "<tr><th>ملاحظات &mdash; Remarks</th><td>" + show(r.remarks) + "</td></tr></table>";
+      h += '<p class="key lat">' + esc(r.gradeKey) + "</p>";
+      h += '<div class="sigs">' + r.signatures.map(function (t) { return "<div>" + esc(t) + "</div>"; }).join("") + "</div></div>";
+      return h;
+    }
+
+    function renderEx(r) {
+      var s = r.student;
+      var h = '<div class="card ex">' +
+        '<p class="school">MSB Educational Institute &mdash; Badri</p>' +
+        '<p class="hd">' + esc(r.heading) + "</p>" +
+        "<table><tr><th style=\"width:22%\">Student's Name:</th><td>" + show(s.name) + "</td><td class=\"c\" style=\"width:16%\">" + esc(s.classLabel) + "</td></tr>" +
+        "<tr><th>ITS / Roll No:</th><td>" + show(s.its) + " &nbsp;/&nbsp; " + show(s.roll) + "</td><td class=\"c\">" + (r.date ? "Date: " + esc(r.date) : "") + "</td></tr></table>";
+      h += '<table class="sec">';
+      r.development.forEach(function (d) {
+        h += '<tr><td class="sect" colspan="2">' + esc(d.title.toUpperCase()) + "</td></tr>" +
+          d.rows.map(function (x) { return "<tr><td>" + esc(x.label) + "</td><td>" + show(x.value) + "</td></tr>"; }).join("");
+      });
+      h += "<tr><td><b>Conduct</b></td><td>" + show(r.conduct) + "</td></tr><tr><td><b>Arts</b></td><td>" + show(r.arts) + "</td></tr>" +
+        "<tr><td><b>CO-CURRICULAR ACTIVITIES:</b></td><td>" + show(r.activities) + "</td></tr></table>";
+      function subj(title, list) {
+        return '<table><tr><td class="sect" colspan="2">' + title + '</td></tr><tr><th>Subject</th><th class="c" style="width:30%">Obtained Grade</th></tr>' +
+          list.map(function (x) { return "<tr><td>" + esc(x.subject) + "</td><td" + gcls(x.grade) + ">" + show(x.grade) + "</td></tr>"; }).join("") + "</table>";
+      }
+      h += subj("FORMATIVE ASSESSMENT", r.formative) + subj("FORMATIVE &amp; SUMMATIVE ASSESSMENT", r.formativeSummative);
+      h += "<table><tr><td><b>Overall Percentage:</b> " + show(r.overallPct) + "</td><td><b>Overall Grade:</b> " + show(r.overallGrade) +
+        "</td><td><b>Class Highest Percentage:</b> " + show(r.classHighest) + "</td></tr>" +
+        "<tr><td><b>Attendance:</b></td><td>Total Days: " + show(r.attendance.total) + "</td><td>Present: " + show(r.attendance.present) + "</td></tr>" +
+        '<tr><td><b>Teacher\'s Remarks:</b></td><td colspan="2">' + show(r.remarks) + "</td></tr></table>";
+      h += '<p class="key">A+ (90% and above), A (80%+), B (70%+), C (60%+), D (50%+), E (40%+), U (below 40%)</p>';
+      h += '<div class="sigs">' + r.signatures.map(function (x) { return "<div>" + esc(x.name) + (x.name ? "<br>" : "") + esc(x.title) + "</div>"; }).join("") + "</div></div>";
+      return h;
+    }
+  </script>
+</body>
+</html>
