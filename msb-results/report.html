@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB Haidery Report Card</title>
+  <meta name="description" content="MSB Educational Institute - Haidery: report card (single subject table) by class and ITS number.">
+  <link rel="icon" href="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png">
+  <style>
+    :root {
+      --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --muted: #64748b; --line: #cbd5e1;
+      --brand: #1d4ed8; --brand-hover: #1e40af;
+      --info-bg: #dbeafe; --info-fg: #1e3a8a; --err-bg: #fee2e2; --err-fg: #7f1d1d; --warn-bg: #fef3c7; --warn-fg: #78350f;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+    .panel { background: var(--card); border-radius: 14px; box-shadow: 0 4px 24px rgba(15, 23, 42, .08); padding: 28px 24px; }
+    header { text-align: center; }
+    header img { height: 110px; width: auto; }
+    h1 { font-size: 1.9rem; line-height: 1.2; margin: 12px 0 4px; }
+    h1 .term { color: var(--brand); }
+    .sub { color: var(--muted); margin: 4px 0 20px; }
+    .sub a { color: var(--brand); }
+    label { display: block; font-size: .9rem; font-weight: 600; margin: 14px 0 6px; }
+    select, input { width: 100%; padding: 12px 14px; font-size: 1.05rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--text); }
+    select:focus, input:focus { outline: 2px solid var(--brand); border-color: var(--brand); }
+    button { width: 100%; margin-top: 18px; padding: 13px; font-size: 1.05rem; font-weight: 600; color: #fff; background: var(--brand); border: 0; border-radius: 10px; cursor: pointer; }
+    button:hover { background: var(--brand-hover); }
+    button:disabled { opacity: .7; cursor: wait; }
+    .msg { margin-top: 22px; padding: 14px 16px; border-radius: 10px; text-align: center; font-weight: 500; }
+    .msg.info { background: var(--info-bg); color: var(--info-fg); }
+    .msg.error { background: var(--err-bg); color: var(--err-fg); }
+    .msg.warning { background: var(--warn-bg); color: var(--warn-fg); text-align: left; }
+
+    /* Report card - plain black-on-white, in the principal's sample layout */
+    .report { border: 2px solid #000; max-width: 600px; margin: 22px auto 0; padding: 14px; background: #fff; color: #000; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 11pt; }
+    .report table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+    .report th, .report td { border: 1px solid #000; padding: 4px 7px; text-align: left; vertical-align: middle; }
+    .report .marks th { background: #dce6f1; text-align: center; font-weight: bold; }
+    .report .marks td.n { width: 7%; text-align: right; background: #dce6f1; }
+    .report .marks td.v { width: 19%; text-align: center; }
+    .report .c { text-align: center; }
+    .report .head { background: #f0f0f0; font-weight: bold; width: 25%; }
+    .report .school { text-align: center; font-size: 13pt; font-weight: 800; margin: 0; }
+    .report .term-line { text-align: center; font-weight: 600; margin: 2px 0 12px; }
+    .report .logo-cell { border: 0; text-align: center; width: 25%; }
+    .report .logo-cell img { height: 72px; }
+    .report h3 { text-align: center; font-size: 11pt; margin: 4px 0; }
+    .report .date { text-align: center; font-size: 9pt; margin: 4px 0 0; }
+    .print { display: none; margin: 14px auto 0; width: auto; padding: 10px 22px; background: #334155; }
+    footer { text-align: center; color: var(--muted); font-size: .8rem; margin-top: 24px; }
+    @media (max-width: 480px) { h1 { font-size: 1.5rem; } header img { height: 84px; } .panel { padding: 22px 16px; } .report { font-size: 10pt; padding: 10px; } .report th, .report td { padding: 4px 5px; } }
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .panel { box-shadow: none; padding: 0; }
+      .report { margin: 0 auto; }
+      .report .marks th, .report .marks td.n { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <header class="no-print">
+        <img src="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png" alt="MSB Educational Institute logo">
+        <h1><span class="term" id="termName">Results</span> Report Card<br><span id="yearLabel"></span></h1>
+        <p class="sub">Select the class and enter the student's ITS Number.<br><a href="index.html">Switch to the classic report card</a></p>
+      </header>
+
+      <form id="lookupForm" class="no-print" autocomplete="off">
+        <label for="classSelect">Class</label>
+        <select id="classSelect" required>
+          <option value="" disabled selected>Loading classes…</option>
+        </select>
+
+        <label for="itsInput">ITS Number</label>
+        <input id="itsInput" type="text" inputmode="numeric" maxlength="8" placeholder="e.g. 50171930" required>
+
+        <button id="lookupBtn" type="submit">Look Up Result</button>
+      </form>
+
+      <div id="results"></div>
+      <button id="printBtn" class="print no-print" type="button" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+    <footer class="no-print">MSB Educational Institute &middot; Haidery</footer>
+  </div>
+
+  <script>
+    // Same data source as index.html: the MSB Result Portal Apps Script (JSON mode).
+    // Fetched with credentials omitted, so the visitor's Google sign-ins (often
+    // several accounts on one phone) never come into play.
+    var API_URL = 'https://script.google.com/macros/s/AKfycbzfQQzh6r39DzcONHcRzMQxeR2x8YLLMTih6lDauMu1QsGq_zx7mk3vHK4wXjFwW3Op/exec';
+    var LOGO_URL = 'https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png';
+    var META = { termName: 'First Test', yearLabel: '', reportDateLabel: '' };
+    var CONDUCT_MAX = 60;
+
+    // Row order and wording from the principal's sample. Subjects not listed
+    // here (grades 9-12) keep the order of the marksheet, after the listed ones.
+    var DI_ORDER = ['Tilawat', 'Hifz', 'Fiqeh', 'Akhbar', 'Adab', 'Tadreeb', 'Insha'];
+    var EXACT_ORDER = ['English Language', 'English Literature', 'Urdu', 'Mathematics', 'General Science', 'Social Studies'];
+    var DISPLAY_NAME = { 'Tilawat': "Al Qur'an - Tilawat", 'Hifz': "Al Qur'an - Hifz" };
+    var GRADE_STEPS = [[90, 'A+'], [80, 'A'], [70, 'B'], [60, 'C'], [50, 'D'], [40, 'E']];
+
+    var classSelect = document.getElementById('classSelect');
+    var itsInput = document.getElementById('itsInput');
+    var lookupBtn = document.getElementById('lookupBtn');
+    var results = document.getElementById('results');
+    var printBtn = document.getElementById('printBtn');
+
+    function esc(v) {
+      return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    // Sheet errors (e.g. #VALUE! when "Abs" is typed as a score) never reach the card.
+    function blank(v) { return v === null || v === undefined || v === '' || /^#/.test(String(v)); }
+    function show(v) { return blank(v) ? '' : esc(/^abs/i.test(String(v)) ? 'Absent' : v); }
+
+    function message(text, kind) {
+      printBtn.style.display = 'none';
+      results.innerHTML = '<div class="msg ' + kind + '">' + esc(text) + '</div>';
+    }
+
+    function api(params) {
+      var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+      return fetch(API_URL + '?' + qs, { credentials: 'omit' }).then(function (r) {
+        if (!r.ok) throw new Error('Server responded ' + r.status);
+        return r.json();
+      });
+    }
+
+    function loadMeta() {
+      api({ api: 'meta' }).then(function (m) {
+        META = m;
+        document.getElementById('termName').textContent = m.termName;
+        document.getElementById('yearLabel').textContent = m.yearLabel;
+        document.title = 'MSB Haidery ' + m.termName + ' Report Card';
+        classSelect.innerHTML = '<option value="" disabled selected>-- Choose Class --</option>';
+        m.classList.forEach(function (c) {
+          var o = document.createElement('option');
+          o.value = c; o.textContent = c.toUpperCase();
+          classSelect.appendChild(o);
+        });
+      }).catch(function () {
+        classSelect.innerHTML = '<option value="" disabled selected>Could not load classes</option>';
+        message('Could not reach the results server. Please check your internet connection and reload the page.', 'error');
+      });
+    }
+
+    function sortBy(rows, order) {
+      // Only re-order classes whose subjects are all in the sample (grades 5-8);
+      // grades 9-12 keep the marksheet's own order.
+      var all = rows.every(function (r) { return order.indexOf(r.subject) >= 0; });
+      if (!all) return rows;
+      return rows.map(function (r, i) {
+        var k = order.indexOf(r.subject);
+        return { r: r, k: k < 0 ? order.length + i : k };
+      }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.r; });
+    }
+
+    function gradeFor(pct) {
+      for (var i = 0; i < GRADE_STEPS.length; i++) if (pct >= GRADE_STEPS[i][0]) return GRADE_STEPS[i][1];
+      return 'U';
+    }
+
+    function marksTable(res) {
+      var rows = [];
+      sortBy(res.dirasatResults || [], DI_ORDER).forEach(function (r) {
+        rows.push({ name: DISPLAY_NAME[r.subject] || r.subject, max: r.maxMarks || 30, marks: r['Obtained Marks'], grade: r.grade });
+      });
+      var conduct = res.studentInfo.conduct;
+      if (!blank(conduct)) {
+        rows.push({ name: 'Conduct / Work Habit', max: CONDUCT_MAX, marks: conduct,
+          grade: typeof conduct === 'number' ? gradeFor(conduct / CONDUCT_MAX * 100) : '' });
+      }
+      sortBy(res.exactResults || [], EXACT_ORDER).forEach(function (r) {
+        rows.push({ name: r.subject, max: r.maxMarks, marks: r['Obtained Marks'], grade: r.grade });
+      });
+      var body = rows.map(function (r, i) {
+        return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(r.name) + (r.max ? ' (' + esc(r.max) + ')' : '') +
+          '</td><td class="v">' + show(r.marks) + '</td><td class="v">' + show(r.grade) + '</td></tr>';
+      }).join('');
+      return '<table class="marks"><tr><th></th><th>Subject</th><th>Obtained<br>Marks</th><th>%<br>Grade</th></tr>' + body + '</table>';
+    }
+
+    function coCurricularTable(extra) {
+      var rows = (extra || []).filter(function (r) { return !blank(r.grade); });
+      if (!rows.length) return '';
+      return '<table class="marks"><tr><th colspan="2">Co-curricular</th></tr>' + rows.map(function (r) {
+        return '<tr><td>' + esc(r.subject) + '</td><td class="v">' + show(r.grade) + '</td></tr>';
+      }).join('') + '</table>';
+    }
+
+    function render(res) {
+      var info = res.studentInfo;
+      var html = '';
+      if (res.warning) html += '<div class="msg warning no-print">⚠️ ' + esc(res.warning) + '</div>';
+      html += '<div class="report">' +
+        '<p class="school">MSB Educational Institute - Haidery</p>' +
+        '<p class="term-line">' + esc(String(META.termName).toUpperCase()) + ' ' + esc(META.yearLabel) + '</p>' +
+        '<table>' +
+          '<tr><td class="head">Name:</td><td>' + show(info.name) + '</td>' +
+            '<td rowspan="4" class="logo-cell"><img src="' + LOGO_URL + '" alt="" onerror="this.style.display=\'none\'"></td></tr>' +
+          '<tr><td class="head">Class:</td><td>' + show(info.className) + '</td></tr>' +
+          '<tr><td class="head">ITS ID:</td><td>' + show(info.itsNumber) + '</td></tr>' +
+          '<tr><td class="head">Roll No:</td><td>' + show(info.rollNo) + '</td></tr>' +
+        '</table>';
+      html += marksTable(res);
+      html += coCurricularTable(res.coCurricularResults);
+      html += '<h3>Keys</h3><table class="key"><tr><th>Grade</th><th>Range</th><th>Grade</th><th>Meaning</th></tr>' +
+        '<tr><td class="c">A+</td><td>90% and above</td><td class="c">E</td><td>40% and above</td></tr>' +
+        '<tr><td class="c">A</td><td>80% and above</td><td class="c">U</td><td>Below 40%</td></tr>' +
+        '<tr><td class="c">B</td><td>70% and above</td><td class="c">L</td><td>Leave</td></tr>' +
+        '<tr><td class="c">C</td><td>60% and above</td><td class="c">N.A</td><td>Not Applicable</td></tr>' +
+        '<tr><td class="c">D</td><td>50% and above</td><td class="c">Ex</td><td>Exempted</td></tr></table>';
+      if (META.reportDateLabel) html += '<p class="date">' + esc(META.reportDateLabel) + '</p>';
+      html += '</div>';
+      results.innerHTML = html;
+      printBtn.style.display = 'block';
+    }
+
+    document.getElementById('lookupForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var cls = classSelect.value;
+      var its = itsInput.value.trim();
+      if (!cls) { message('Please select a class.', 'error'); return; }
+      if (!/^\d{8}$/.test(its)) { message('Please enter the 8-digit ITS Number.', 'error'); return; }
+      lookupBtn.disabled = true;
+      lookupBtn.textContent = 'Searching…';
+      message('Fetching the report card…', 'info');
+      api({ api: 'results', 'class': cls, its: its }).then(function (res) {
+        if (res.success) render(res); else message(res.message || 'Result not found.', 'error');
+      }).catch(function () {
+        message('Could not reach the results server. Please check your internet connection and try again.', 'error');
+      }).then(function () {
+        lookupBtn.disabled = false;
+        lookupBtn.textContent = 'Look Up Result';
+      });
+    });
+
+    loadMeta();
+  </script>
+</body>
+</html>
