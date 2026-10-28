@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB BHS Conduct Log</title>
+  <meta name="description" content="MSB BHS Educational Institute: a student's Hasanaat and Tanbeeh log.">
+  <link rel="icon" href="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png">
+  <style>
+    :root {
+      --bg: #f1f5f9; --card: #ffffff; --text: #1e293b; --muted: #64748b; --line: #e2e8f0;
+      --brand: #1d4ed8; --plus: #15803d; --plus-bg: #dcfce7; --minus: #b91c1c; --minus-bg: #fee2e2;
+      --err-bg: #fee2e2; --err-fg: #7f1d1d; --info-bg: #dbeafe; --info-fg: #1e3a8a;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; }
+    .panel { background: var(--card); border-radius: 14px; box-shadow: 0 4px 24px rgba(15, 23, 42, .08); padding: 22px 20px; }
+    .back { display: inline-block; margin-bottom: 14px; color: var(--brand); font-weight: 600; text-decoration: none; }
+    header { text-align: center; }
+    .logos { display: inline-flex; align-items: center; gap: 12px; }
+    .logos img { height: 64px; width: auto; }
+    h1 { font-size: 1.4rem; margin: 10px 0 2px; }
+    .who { color: var(--muted); margin: 0 0 18px; }
+    .who b { color: var(--text); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+    .stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 6px; text-align: center; }
+    .stat .v { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .stat .l { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .stat.plus .v { color: var(--plus); }
+    .stat.minus .v { color: var(--minus); }
+    .stat.total { background: #eff6ff; border-color: #bfdbfe; }
+    .tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    .tabs button { flex: 1; padding: 9px 6px; border: 1px solid var(--line); background: #fff; border-radius: 999px; font-size: .9rem; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .tabs button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+    .entry { display: flex; gap: 12px; align-items: flex-start; padding: 12px 2px; border-top: 1px solid var(--line); }
+    .pts { flex: none; min-width: 46px; text-align: center; font-weight: 700; border-radius: 8px; padding: 6px 4px; font-variant-numeric: tabular-nums; }
+    .pts.plus { background: var(--plus-bg); color: var(--plus); }
+    .pts.minus { background: var(--minus-bg); color: var(--minus); }
+    .body { flex: 1; min-width: 0; }
+    .act { font-weight: 600; }
+    .meta { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+    .note { font-size: .9rem; margin-top: 4px; }
+    .empty { text-align: center; color: var(--muted); padding: 18px 0; }
+    .msg { margin-top: 10px; padding: 14px 16px; border-radius: 10px; text-align: center; font-weight: 500; }
+    .msg.info { background: var(--info-bg); color: var(--info-fg); }
+    .msg.error { background: var(--err-bg); color: var(--err-fg); }
+    .rule { font-size: .8rem; color: var(--muted); text-align: center; margin: 14px 0 0; }
+    @media (max-width: 420px) { .stat .v { font-size: 1.15rem; } .stat .l { font-size: .7rem; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="#" onclick="goBack(); return false;">&larr; Back to report card</a>
+    <div class="panel">
+      <header>
+        <span class="logos"><img src="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png" alt="MSB logo"><img src="https://res.cloudinary.com/dmukvplh6/image/upload/v1765528689/BHS_LOGO_crop_atlgni.jpg" alt="BHS logo"></span>
+        <h1>Conduct Log</h1>
+        <p class="who" id="who">MSB BHS Educational Institute</p>
+      </header>
+      <div id="out"><div class="msg info">Loading the conduct log…</div></div>
+    </div>
+  </div>
+
+  <script>
+    var API_URL = 'https://script.google.com/macros/s/AKfycbzfQQzh6r39DzcONHcRzMQxeR2x8YLLMTih6lDauMu1QsGq_zx7mk3vHK4wXjFwW3Op/exec';
+    var params = new URLSearchParams(location.search);
+    var cls = params.get('class') || '';
+    var its = params.get('its') || '';
+    var out = document.getElementById('out');
+    var DATA = null;
+
+    function esc(v) {
+      return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function signed(n) { return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n); }
+    function goBack() {
+      if (history.length > 1) history.back();
+      else location.href = 'report.html?class=' + encodeURIComponent(cls) + '&its=' + encodeURIComponent(its);
+    }
+
+    function list(filter) {
+      var rows = DATA.entries.filter(function (e) {
+        return filter === 'all' || (filter === 'plus' ? e.points >= 0 : e.points < 0);
+      });
+      if (!rows.length) return '<p class="empty">No entries.</p>';
+      return rows.map(function (e) {
+        var kind = e.points >= 0 ? 'plus' : 'minus';
+        return '<div class="entry"><div class="pts ' + kind + '">' + signed(e.points) + '</div><div class="body">' +
+          '<div class="act">' + esc(e.action) + '</div>' +
+          '<div class="meta">' + esc(e.date) + (e.teacher ? ' &middot; ' + esc(e.teacher) : '') + '</div>' +
+          (e.comment ? '<div class="note">' + esc(e.comment) + '</div>' : '') + '</div></div>';
+      }).join('');
+    }
+
+    function render(filter) {
+      var d = DATA;
+      var nPlus = d.entries.filter(function (e) { return e.points >= 0; }).length;
+      var nMinus = d.entries.length - nPlus;
+      out.innerHTML =
+        '<div class="stats">' +
+          '<div class="stat"><div class="v">' + d.baseline + '</div><div class="l">Starting</div></div>' +
+          '<div class="stat plus"><div class="v">' + signed(d.hasanaat) + '</div><div class="l">Hasanaat</div></div>' +
+          '<div class="stat minus"><div class="v">' + signed(d.tanbeeh) + '</div><div class="l">Tanbeeh</div></div>' +
+          '<div class="stat total"><div class="v">' + d.conduct + '<small>/' + d.conductMax + '</small></div><div class="l">Conduct</div></div>' +
+        '</div>' +
+        '<div class="tabs">' +
+          '<button data-f="all" class="' + (filter === 'all' ? 'on' : '') + '">All (' + d.entries.length + ')</button>' +
+          '<button data-f="plus" class="' + (filter === 'plus' ? 'on' : '') + '">Hasanaat (' + nPlus + ')</button>' +
+          '<button data-f="minus" class="' + (filter === 'minus' ? 'on' : '') + '">Tanbeeh (' + nMinus + ')</button>' +
+        '</div>' + list(filter) +
+        '<p class="rule">Conduct = ' + d.baseline + ' + Hasanaat − Tanbeeh, out of ' + d.conductMax + '. Latest entries first.</p>';
+      out.querySelectorAll('.tabs button').forEach(function (b) {
+        b.addEventListener('click', function () { render(b.getAttribute('data-f')); });
+      });
+    }
+
+    if (!cls || !/^\d{8}$/.test(its)) {
+      out.innerHTML = '<div class="msg error">Open this page from the Conduct row of the report card.</div>';
+    } else {
+      fetch(API_URL + '?api=conductlog&class=' + encodeURIComponent(cls) + '&its=' + encodeURIComponent(its), { credentials: 'omit' })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (d) {
+          if (!d.success) { out.innerHTML = '<div class="msg error">' + esc(d.message) + '</div>'; return; }
+          DATA = d;
+          document.getElementById('who').innerHTML = '<b>' + esc(d.student.name) + '</b><br>Class ' + esc(d.student.className) + ' &middot; ITS ' + esc(d.student.itsNumber);
+          render('all');
+        })
+        .catch(function () {
+          out.innerHTML = '<div class="msg error">Could not reach the results server. Please check your internet connection and reload.</div>';
+        });
+    }
+  </script>
+</body>
+</html>

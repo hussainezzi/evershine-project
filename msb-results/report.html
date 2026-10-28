@@ -43,6 +43,8 @@
     .report .marks td.v { width: 17%; text-align: center; }
     .report .marks .max { width: 9%; text-align: center; font-size: .85em; color: #555; }
     .report .marks th.max { color: #000; font-weight: 600; }
+    .report a.clink { color: #1d4ed8; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+    @media print { .report a.clink { color: #000; text-decoration: none; } }
     .report .c { text-align: center; }
     .report .head { background: #f0f0f0; font-weight: bold; width: 25%; }
     .report .school { text-align: center; font-size: 13pt; font-weight: 800; margin: 0; }
@@ -150,10 +152,19 @@
           o.value = c; o.textContent = c.toUpperCase();
           classSelect.appendChild(o);
         });
+        var q = new URLSearchParams(location.search);
+        var qc = (q.get('class') || '').toLowerCase(), qi = q.get('its') || '';
+        if (qc && m.classList.indexOf(qc) >= 0 && qi) { classSelect.value = qc; itsInput.value = qi; lookup(qc, qi); }
       }).catch(function () {
         classSelect.innerHTML = '<option value="" disabled selected>Could not load classes</option>';
         message('Could not reach the results server. Please check your internet connection and reload the page.', 'error');
       });
+    }
+
+    // Conduct mark opens the student's Hasanaat / Tanbeeh log (conduct.html).
+    function conductLink(info, text) {
+      var href = 'conduct.html?class=' + encodeURIComponent(String(info.className).toLowerCase()) + '&its=' + encodeURIComponent(info.itsNumber);
+      return '<a class="clink" href="' + href + '" title="View conduct log">' + text + ' <span class="no-print">&rsaquo;</span></a>';
     }
 
     function sortBy(rows, order) {
@@ -179,7 +190,7 @@
       });
       var conduct = res.studentInfo.conduct;
       if (!blank(conduct)) {
-        rows.push({ name: 'Conduct / Work Habit', max: CONDUCT_MAX, marks: conduct,
+        rows.push({ name: 'Conduct / Work Habit', max: CONDUCT_MAX, marks: conduct, link: true,
           grade: typeof conduct === 'number' ? gradeFor(conduct / CONDUCT_MAX * 100) : '' });
       }
       sortBy(res.exactResults || [], EXACT_ORDER).forEach(function (r) {
@@ -187,7 +198,8 @@
       });
       var body = rows.map(function (r, i) {
         return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(r.name) + '</td><td class="max">' + show(r.max) +
-          '</td><td class="v">' + show(r.marks) + '</td><td class="v">' + show(r.grade) + '</td></tr>';
+          '</td><td class="v">' + (r.link ? conductLink(res.studentInfo, show(r.marks)) : show(r.marks)) +
+          '</td><td class="v">' + show(r.grade) + '</td></tr>';
       }).join('');
       return '<table class="marks"><tr><th></th><th>Subject</th><th class="max">Max</th><th>Obtained<br>Marks</th><th>%<br>Grade</th></tr>' + body + '</table>';
     }
@@ -230,22 +242,27 @@
 
     document.getElementById('lookupForm').addEventListener('submit', function (e) {
       e.preventDefault();
-      var cls = classSelect.value;
-      var its = itsInput.value.trim();
+      lookup(classSelect.value, itsInput.value.trim());
+    });
+
+    function lookup(cls, its) {
       if (!cls) { message('Please select a class.', 'error'); return; }
       if (!/^\d{8}$/.test(its)) { message('Please enter the 8-digit ITS Number.', 'error'); return; }
       lookupBtn.disabled = true;
       lookupBtn.textContent = 'Searching…';
       message('Fetching the report card…', 'info');
       api({ api: 'results', 'class': cls, its: its }).then(function (res) {
-        if (res.success) render(res); else message(res.message || 'Result not found.', 'error');
+        if (res.success) {
+          render(res);
+          try { history.replaceState(null, '', '?class=' + encodeURIComponent(cls) + '&its=' + encodeURIComponent(its)); } catch (err) {}
+        } else message(res.message || 'Result not found.', 'error');
       }).catch(function () {
         message('Could not reach the results server. Please check your internet connection and try again.', 'error');
       }).then(function () {
         lookupBtn.disabled = false;
         lookupBtn.textContent = 'Look Up Result';
       });
-    });
+    }
 
     loadMeta();
   </script>
