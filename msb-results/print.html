@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MSB BHS Result Printing</title>
+  <meta name="description" content="MSB BHS Educational Institute staff portal: print every report card of a class, or the whole school, as one PDF.">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png">
+  <style>
+    :root {
+      --ink: #0f172a; --muted: #64748b; --line: #cbd5e1; --brand: #1d4ed8; --brand-dark: #1e3a8a;
+      --err-bg: #fee2e2; --err-fg: #7f1d1d; --ok-bg: #dcfce7; --ok-fg: #14532d;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--ink);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(59, 130, 246, .35), transparent 60%),
+        radial-gradient(900px 500px at 110% 10%, rgba(30, 64, 175, .35), transparent 60%),
+        linear-gradient(160deg, #0b1d4d 0%, #1e3a8a 45%, #172554 100%);
+      background-attachment: fixed;
+    }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
+    .hero { text-align: center; color: #fff; margin-bottom: 20px; }
+    .logos { display: inline-flex; gap: 14px; align-items: center; background: #fff; border-radius: 16px; padding: 10px 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); }
+    .logos img { height: 72px; width: auto; }
+    .hero h1 { font-size: 1.9rem; margin: 16px 0 4px; letter-spacing: -.01em; }
+    .hero p { margin: 0; color: #c7d2fe; }
+    .panel { background: rgba(255, 255, 255, .97); border-radius: 18px; padding: 26px 22px; box-shadow: 0 20px 50px rgba(2, 6, 23, .45); }
+    label { display: block; font-size: .9rem; font-weight: 600; margin: 14px 0 6px; }
+    select, input { width: 100%; padding: 12px 14px; font-size: 1.05rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); }
+    select:focus, input:focus { outline: 2px solid var(--brand); border-color: var(--brand); }
+    .btn { width: 100%; margin-top: 18px; padding: 13px; font-size: 1.05rem; font-weight: 700; color: #fff; background: var(--brand); border: 0; border-radius: 10px; cursor: pointer; }
+    .btn:hover { background: var(--brand-dark); }
+    .btn:disabled { opacity: .65; cursor: wait; }
+    .btn.print { background: #0f766e; }
+    .btn.print:hover { background: #115e59; }
+    .hint { color: var(--muted); font-size: .85rem; margin: 8px 0 0; }
+    .status { margin-top: 18px; }
+    .msg { padding: 13px 15px; border-radius: 10px; font-weight: 500; }
+    .msg.error { background: var(--err-bg); color: var(--err-fg); }
+    .msg.ok { background: var(--ok-bg); color: var(--ok-fg); }
+    .bar { height: 10px; border-radius: 99px; background: #e2e8f0; overflow: hidden; margin: 10px 0 6px; }
+    .bar > i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #2563eb, #22c55e); transition: width .3s; }
+    .progress-text { font-size: .9rem; color: var(--muted); }
+    .preview-note { color: #c7d2fe; text-align: center; margin: 26px 0 10px; font-size: .9rem; }
+
+    /* ---- printed pages ---- */
+    #pages { display: none; }
+    .page { background: #fff; color: #000; width: 100%; max-width: 760px; margin: 0 auto 18px; padding: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); }
+    .divider { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 500px; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; }
+    .divider .logos { box-shadow: none; padding: 0; }
+    .divider .logos img { height: 110px; }
+    .divider .school { font-size: 20pt; font-weight: 800; margin: 26px 0 4px; }
+    .divider .term { font-size: 13pt; font-weight: 600; margin: 0 0 40px; }
+    .divider .cls { font-size: 54pt; font-weight: 800; letter-spacing: .02em; border: 4px solid #000; padding: 10px 40px; margin: 0; }
+    .divider .count { font-size: 13pt; margin-top: 18px; }
+
+    .report { color: #000; font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 11pt; border: 2px solid #000; padding: 14px; }
+    .report table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+    .report th, .report td { border: 1px solid #000; padding: 3px 7px; text-align: left; vertical-align: middle; }
+    .report .marks th { background: #dce6f1; text-align: center; font-weight: bold; }
+    .report .marks td.n { width: 7%; text-align: right; background: #dce6f1; }
+    .report .marks td.v { width: 17%; text-align: center; }
+    .report .marks .max { width: 9%; text-align: center; font-size: .85em; color: #555; }
+    .report .marks th.max { color: #000; font-weight: 600; }
+    .report .c { text-align: center; }
+    .report .head { background: #f0f0f0; font-weight: bold; width: 25%; }
+    .report .school { text-align: center; font-size: 13pt; font-weight: 800; margin: 0; }
+    .report .term-line { text-align: center; font-weight: 600; margin: 2px 0 10px; }
+    .report .logo-cell { border: 0; text-align: center; width: 30%; }
+    .report .logo-cell .lg { display: inline-flex; align-items: center; gap: 8px; }
+    .report .logo-cell img { height: 64px; width: auto; }
+    .report h3 { text-align: center; font-size: 11pt; margin: 4px 0; }
+    .report .date { text-align: center; font-size: 9pt; margin: 4px 0 0; }
+
+    @page { size: A4 portrait; margin: 10mm; }
+    @media print {
+      body { background: #fff !important; }
+      .wrap > :not(#pages) { display: none !important; }
+      .wrap { max-width: none; padding: 0; }
+      #pages { display: block !important; }
+      .page { box-shadow: none; margin: 0; padding: 0; max-width: none; break-after: page; page-break-after: always; }
+      .page:last-child { break-after: auto; page-break-after: auto; }
+      .divider { min-height: 260mm; }
+      .report .marks th, .report .marks td.n, .report .head { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <span class="logos"><img src="https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png" alt="MSB logo"><img src="https://res.cloudinary.com/dmukvplh6/image/upload/v1765528689/BHS_LOGO_crop_atlgni.jpg" alt="BHS logo"></span>
+      <h1>Result Printing</h1>
+      <p><span id="termName">First Test</span> <span id="yearLabel"></span> &middot; for class teachers and HOS</p>
+    </div>
+
+    <div class="panel">
+      <form id="form" autocomplete="off">
+        <label for="pin">Staff PIN</label>
+        <input id="pin" type="password" inputmode="numeric" placeholder="Enter the staff PIN" required>
+
+        <label for="classSelect">Class</label>
+        <select id="classSelect" required>
+          <option value="" disabled selected>Loading classes…</option>
+        </select>
+        <p class="hint">Choose one class, or <b>Print all results</b> for the whole school. Every student gets one page, and each class starts with its own cover page.</p>
+
+        <button id="goBtn" class="btn" type="submit">Prepare PDF</button>
+      </form>
+      <div id="status" class="status"></div>
+      <button id="printBtn" class="btn print" type="button" style="display:none" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <p id="previewNote" class="preview-note" style="display:none">Preview below. In the print window choose <b>Save as PDF</b> (paper size A4).</p>
+    <div id="pages"></div>
+  </div>
+
+  <script>
+    var API_URL = 'https://script.google.com/macros/s/AKfycbzfQQzh6r39DzcONHcRzMQxeR2x8YLLMTih6lDauMu1QsGq_zx7mk3vHK4wXjFwW3Op/exec';
+    var LOGO_URL = 'https://res.cloudinary.com/dmukvplh6/image/upload/v1760945089/MSB_Logo_roc2tc.png';
+    var BHS_LOGO_URL = 'https://res.cloudinary.com/dmukvplh6/image/upload/v1765528689/BHS_LOGO_crop_atlgni.jpg';
+    var SCHOOL_NAME = 'MSB BHS Educational Institute';
+    var META = { termName: 'First Test', yearLabel: '', reportDateLabel: '', classList: [] };
+    var CONDUCT_MAX = 60;
+    var ALL = '__all__';
+    var PARALLEL = 3;
+
+    // Same card as report.html (the parents' page): row order, names and grade rules.
+    var DI_ORDER = ['Tilawat', 'Hifz', 'Fiqeh', 'Akhbar', 'Adab', 'Tadreeb', 'Insha'];
+    var EXACT_ORDER = ['English Language', 'English Literature', 'Urdu', 'Mathematics', 'General Science', 'Social Studies'];
+    var DISPLAY_NAME = { 'Tilawat': "Al Qur'an - Tilawat", 'Hifz': "Al Qur'an - Hifz" };
+    var GRADE_STEPS = [[90, 'A+'], [80, 'A'], [70, 'B'], [60, 'C'], [50, 'D'], [40, 'E']];
+
+    var form = document.getElementById('form');
+    var pinInput = document.getElementById('pin');
+    var classSelect = document.getElementById('classSelect');
+    var goBtn = document.getElementById('goBtn');
+    var statusEl = document.getElementById('status');
+    var printBtn = document.getElementById('printBtn');
+    var pagesEl = document.getElementById('pages');
+    var previewNote = document.getElementById('previewNote');
+
+    try { pinInput.value = sessionStorage.getItem('staffPin') || ''; } catch (e) {}
+
+    function esc(v) {
+      return String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function blank(v) { return v === null || v === undefined || v === '' || /^#/.test(String(v)); }
+    function show(v) { return blank(v) ? '' : esc(/^abs/i.test(String(v)) ? 'Absent' : v); }
+    function gradeFor(pct) {
+      for (var i = 0; i < GRADE_STEPS.length; i++) if (pct >= GRADE_STEPS[i][0]) return GRADE_STEPS[i][1];
+      return 'U';
+    }
+    function sortBy(rows, order) {
+      var all = rows.every(function (r) { return order.indexOf(r.subject) >= 0; });
+      if (!all) return rows;
+      return rows.map(function (r, i) {
+        var k = order.indexOf(r.subject);
+        return { r: r, k: k < 0 ? order.length + i : k };
+      }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.r; });
+    }
+
+    function api(params) {
+      var qs = Object.keys(params).map(function (k) { return k + '=' + encodeURIComponent(params[k]); }).join('&');
+      return fetch(API_URL + '?' + qs, { credentials: 'omit' }).then(function (r) {
+        if (!r.ok) throw new Error('Server responded ' + r.status);
+        return r.json();
+      });
+    }
+
+    function setStatus(html) { statusEl.innerHTML = html; }
+    function progress(done, total, label) {
+      var pct = total ? Math.round(done / total * 100) : 0;
+      setStatus('<div class="bar"><i style="width:' + pct + '%"></i></div><div class="progress-text">' + esc(label) + '</div>');
+    }
+
+    function card(res) {
+      var info = res.studentInfo;
+      var rows = [];
+      sortBy(res.dirasatResults || [], DI_ORDER).forEach(function (r) {
+        rows.push({ name: DISPLAY_NAME[r.subject] || r.subject, max: r.maxMarks || 30, marks: r['Obtained Marks'], grade: r.grade });
+      });
+      if (!blank(info.conduct)) {
+        rows.push({ name: 'Conduct / Work Habit', max: CONDUCT_MAX, marks: info.conduct,
+          grade: typeof info.conduct === 'number' ? gradeFor(info.conduct / CONDUCT_MAX * 100) : '' });
+      }
+      sortBy(res.exactResults || [], EXACT_ORDER).forEach(function (r) {
+        rows.push({ name: r.subject, max: r.maxMarks, marks: r['Obtained Marks'], grade: r.grade });
+      });
+      var marks = '<table class="marks"><tr><th></th><th>Subject</th><th class="max">Max</th><th>Obtained<br>Marks</th><th>%<br>Grade</th></tr>' +
+        rows.map(function (r, i) {
+          return '<tr><td class="n">' + (i + 1) + '</td><td>' + esc(r.name) + '</td><td class="max">' + show(r.max) +
+            '</td><td class="v">' + show(r.marks) + '</td><td class="v">' + show(r.grade) + '</td></tr>';
+        }).join('') + '</table>';
+      var extra = (res.coCurricularResults || []).filter(function (r) { return !blank(r.grade); });
+      var co = extra.length ? '<table class="marks"><tr><th colspan="2">Co-curricular</th></tr>' + extra.map(function (r) {
+        return '<tr><td>' + esc(r.subject) + '</td><td class="v">' + show(r.grade) + '</td></tr>';
+      }).join('') + '</table>' : '';
+      return '<div class="report">' +
+        '<p class="school">' + esc(SCHOOL_NAME) + '</p>' +
+        '<p class="term-line">' + esc(String(META.termName).toUpperCase()) + ' ' + esc(META.yearLabel) + '</p>' +
+        '<table>' +
+          '<tr><td class="head">Name:</td><td>' + show(info.name) + '</td>' +
+            '<td rowspan="4" class="logo-cell"><span class="lg"><img src="' + LOGO_URL + '" alt="MSB"><img src="' + BHS_LOGO_URL + '" alt="BHS"></span></td></tr>' +
+          '<tr><td class="head">Class:</td><td>' + show(info.className) + '</td></tr>' +
+          '<tr><td class="head">ITS ID:</td><td>' + show(info.itsNumber) + '</td></tr>' +
+          '<tr><td class="head">Roll No:</td><td>' + show(info.rollNo) + '</td></tr>' +
+        '</table>' + marks + co +
+        '<h3>Keys</h3><table class="key"><tr><th>Grade</th><th>Range</th><th>Grade</th><th>Meaning</th></tr>' +
+        '<tr><td class="c">A+</td><td>90% and above</td><td class="c">D</td><td>50% and above</td></tr>' +
+        '<tr><td class="c">A</td><td>80% and above</td><td class="c">E</td><td>40% and above</td></tr>' +
+        '<tr><td class="c">B</td><td>70% and above</td><td class="c">U</td><td>Below 40%</td></tr>' +
+        '<tr><td class="c">C</td><td>60% and above</td><td class="c">N.A</td><td>Not Applicable</td></tr></table>' +
+        (META.reportDateLabel ? '<p class="date">' + esc(META.reportDateLabel) + '</p>' : '') +
+        '</div>';
+    }
+
+    function divider(cls, count) {
+      return '<section class="page divider">' +
+        '<span class="logos"><img src="' + LOGO_URL + '" alt="MSB"><img src="' + BHS_LOGO_URL + '" alt="BHS"></span>' +
+        '<p class="school">' + esc(SCHOOL_NAME) + '</p>' +
+        '<p class="term">' + esc(META.termName) + ' ' + esc(META.yearLabel) + ' &middot; Report Cards</p>' +
+        '<p class="cls">Class ' + esc(cls) + '</p>' +
+        '<p class="count">' + count + ' student' + (count === 1 ? '' : 's') + '</p></section>';
+    }
+
+    function loadMeta() {
+      api({ api: 'meta' }).then(function (m) {
+        META = m;
+        document.getElementById('termName').textContent = m.termName;
+        document.getElementById('yearLabel').textContent = m.yearLabel;
+        classSelect.innerHTML = '<option value="" disabled selected>-- Choose Class --</option>' +
+          '<option value="' + ALL + '">Print all results (whole school)</option>' +
+          m.classList.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c.toUpperCase()) + '</option>'; }).join('');
+      }).catch(function () {
+        classSelect.innerHTML = '<option value="" disabled selected>Could not load classes</option>';
+        setStatus('<div class="msg error">Could not reach the results server. Check the internet connection and reload.</div>');
+      });
+    }
+
+    // Fetch classes a few at a time; keep results in class order.
+    function fetchClasses(classes, pin) {
+      var out = new Array(classes.length);
+      var next = 0, done = 0, failed = null;
+      progress(0, classes.length, 'Fetching ' + (classes.length === 1 ? 'class ' + classes[0].toUpperCase() : classes.length + ' classes') + '…');
+      return new Promise(function (resolve, reject) {
+        function worker() {
+          if (failed) return Promise.resolve();
+          if (next >= classes.length) return Promise.resolve();
+          var i = next++;
+          return api({ api: 'classresults', 'class': classes[i], pin: pin }).then(function (res) {
+            if (!res.success) { failed = res.message || 'Could not load class ' + classes[i]; return; }
+            out[i] = res;
+            done++;
+            progress(done, classes.length, 'Fetched ' + done + ' of ' + classes.length + (classes.length > 1 ? ' classes (latest: ' + res.className + ')' : ''));
+            return worker();
+          });
+        }
+        var workers = [];
+        for (var w = 0; w < Math.min(PARALLEL, classes.length); w++) workers.push(worker());
+        Promise.all(workers).then(function () { failed ? reject(new Error(failed)) : resolve(out); }, reject);
+      });
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var pin = pinInput.value.trim();
+      var choice = classSelect.value;
+      if (!pin) { setStatus('<div class="msg error">Please enter the staff PIN.</div>'); return; }
+      if (!choice) { setStatus('<div class="msg error">Please choose a class.</div>'); return; }
+      var classes = choice === ALL ? META.classList.slice() : [choice];
+      goBtn.disabled = true; goBtn.textContent = 'Preparing…';
+      printBtn.style.display = 'none'; previewNote.style.display = 'none';
+      pagesEl.style.display = 'none'; pagesEl.innerHTML = '';
+      fetchClasses(classes, pin).then(function (results) {
+        try { sessionStorage.setItem('staffPin', pin); } catch (err) {}
+        var html = '', students = 0;
+        results.forEach(function (res) {
+          if (!res.count) return;
+          html += divider(res.className, res.count);
+          res.students.forEach(function (s) { html += '<section class="page">' + card(s) + '</section>'; students++; });
+        });
+        if (!students) { setStatus('<div class="msg error">No report cards found for that choice.</div>'); return; }
+        pagesEl.innerHTML = html;
+        pagesEl.style.display = 'block';
+        setStatus('<div class="progress-text">Preparing pages…</div>');
+        // Logos must be loaded before printing, or the PDF shows empty boxes.
+        return Promise.all([].map.call(pagesEl.querySelectorAll('img'), function (img) {
+          return img.complete ? null : new Promise(function (ok) { img.onload = img.onerror = ok; });
+        })).then(function () { return [results, students]; });
+      }).then(function (r) {
+        if (!r) return;
+        var results = r[0], students = r[1];
+        previewNote.style.display = 'block';
+        printBtn.style.display = 'block';
+        var classCount = results.filter(function (r) { return r.count; }).length;
+        setStatus('<div class="msg ok">Ready: ' + students + ' report cards in ' + classCount + ' class' + (classCount === 1 ? '' : 'es') +
+          '. Tap <b>Print / Save as PDF</b> and choose "Save as PDF".</div>');
+        document.title = 'MSB BHS ' + META.termName + ' Results - ' + (choice === ALL ? 'Whole School' : 'Class ' + choice.toUpperCase());
+      }).catch(function (err) {
+        setStatus('<div class="msg error">' + esc(err.message === 'Failed to fetch' ? 'Could not reach the results server. Check the internet connection and try again.' : err.message) + '</div>');
+      }).then(function () {
+        goBtn.disabled = false; goBtn.textContent = 'Prepare PDF';
+      });
+    });
+
+    loadMeta();
+  </script>
+</body>
+</html>
